@@ -1,37 +1,46 @@
 {
   "name": "patient-monitoring-app",
-  "version": "1.0.0",
-  "description": "ระบบติดตามค่าความดันโลหิตและ DTX สำหรับผู้ป่วย",
-  "main": "index.html",
+  "version": "0.1.0",
+  "private": true,
   "scripts": {
-    "dev": "npx live-server --port=3001 --open=/index.html",
-    "start": "npx live-server --port=3001 --open=/index.html",
-    "build": "echo 'Static site - no build process needed'",
-    "deploy": "gh-pages -d ."
-  },
-  "keywords": [
-    "healthcare",
-    "patient-monitoring",
-    "blood-pressure",
-    "diabetes",
-    "supabase",
-    "web-app"
-  ],
-  "author": "Hospital System",
-  "license": "MIT",
-  "devDependencies": {
-    "live-server": "^1.2.2",
-    "gh-pages": "^6.1.0"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "db:push": "prisma db push",
+    "db:generate": "prisma generate",
+    "db:studio": "prisma studio"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.38.0"
+    "next": "14.0.4",
+    "react": "^18",
+    "react-dom": "^18",
+    "@prisma/client": "^5.7.1",
+    "prisma": "^5.7.1",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "jose": "^5.2.0",
+    "recharts": "^2.8.0",
+    "lucide-react": "^0.294.0",
+    "react-hook-form": "^7.48.2",
+    "zod": "^3.22.4",
+    "@hookform/resolvers": "^3.3.2",
+    "react-hot-toast": "^2.4.1",
+    "nodemailer": "^6.9.7",
+    "date-fns": "^2.30.0"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/yourusername/patient-monitoring-app.git"
-  },
-  "homepage": "https://yourusername.github.io/patient-monitoring-app",
-  "engines": {
-    "node": ">=14.0.0"
+  "devDependencies": {
+    "typescript": "^5",
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.5",
+    "@types/nodemailer": "^6.4.14",
+    "autoprefixer": "^10.0.1",
+    "postcss": "^8",
+    "tailwindcss": "^3.3.0",
+    "eslint": "^8",
+    "eslint-config-next": "14.0.4"
   }
 }

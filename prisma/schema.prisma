@@ -1,0 +1,74 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  phone     String   @unique
+  name      String?
+  email     String?
+  password  String
+  consent   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  bloodPressureRecords BloodPressureRecord[]
+  bloodSugarRecords    BloodSugarRecord[]
+
+  @@map("users")
+}
+
+model BloodPressureRecord {
+  id          String   @id @default(cuid())
+  systolic    Int
+  diastolic   Int
+  pulse       Int?
+  timeOfDay   String   // morning, afternoon, evening, before_bed
+  notes       String?
+  recordedAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("blood_pressure_records")
+}
+
+model BloodSugarRecord {
+  id         String   @id @default(cuid())
+  value      Float
+  unit       String   @default("mg/dL")
+  timeOfDay  String   // before_breakfast, before_lunch, before_dinner, after_meal_2h, before_bed
+  notes      String?
+  recordedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("blood_sugar_records")
+}
+
+model EmailLog {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // 'full_data' or 'before_deletion'
+  sentAt    DateTime @default(now())
+  status    String   @default("sent") // 'sent', 'failed'
+  recipient String
+
+  @@map("email_logs")
+}
