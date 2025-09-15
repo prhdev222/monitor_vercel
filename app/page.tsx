@@ -14,7 +14,7 @@ export default function HomePage() {
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center">
               <Heart className="h-8 w-8 text-primary-600 mr-3" />
-              <h1 className="text-2xl font-bold text-gray-900">ระบบบันทึกข้อมูลสุขภาพ</h1>
+              <h1 className="text-2xl font-bold text-gray-900">ระบบบันทึกข้อมูลสุขภาพ - โรงพยาบาลสงฆ์</h1>
             </div>
             <div className="flex space-x-4">
               <Link href="/login" className="btn-secondary">
@@ -32,10 +32,10 @@ export default function HomePage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="text-center">
           <h2 className="text-4xl font-bold text-gray-900 mb-6">
-            บันทึกข้อมูลสุขภาพของคุณอย่างง่ายดาย
+            บันทึกข้อมูลสุขภาพของพระคุณเจ้าอย่างง่ายดาย
           </h2>
           <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-            ระบบบันทึกค่าความดันโลหิตและน้ำตาลในเลือดที่บ้าน 
+            ระบบบันทึกค่าความดันโลหิตและน้ำตาลในเลือดสำหรับพระคุณเจ้า 
             เพื่อให้แพทย์สามารถติดตามและให้คำแนะนำได้อย่างมีประสิทธิภาพ
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">

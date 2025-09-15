@@ -58,7 +58,10 @@ export async function POST(request: NextRequest) {
     console.log('Sending email...')
     const emailResult = await sendDataToClinic({
       user: {
-        name: user.name || undefined,
+        firstName: user.firstName || undefined,
+        lastName: user.lastName || undefined,
+        hnNumber: user.hnNumber || undefined,
+        temple: user.temple || undefined,
         phone: user.phone,
         email: user.email || undefined
       },

@@ -40,7 +40,10 @@ type BloodSugarForm = z.infer<typeof bloodSugarSchema>
 interface User {
   id: string
   phone: string
-  name?: string
+  firstName?: string
+  lastName?: string
+  hnNumber?: string
+  temple?: string
   email?: string
   consent: boolean
 }
@@ -263,11 +266,11 @@ export default function DashboardPage() {
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center">
               <Heart className="h-8 w-8 text-primary-600 mr-3" />
-              <h1 className="text-xl font-bold text-gray-900">ระบบบันทึกข้อมูลสุขภาพ</h1>
+              <h1 className="text-xl font-bold text-gray-900">ระบบบันทึกข้อมูลสุขภาพ - โรงพยาบาลสงฆ์</h1>
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600">
-                สวัสดี, {user?.name || user?.phone}
+                สวัสดี, พระคุณเจ้า {user?.firstName} {user?.lastName} {user?.hnNumber && `(HN: ${user.hnNumber})`}
               </span>
               <button
                 onClick={handleLogout}

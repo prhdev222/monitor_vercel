@@ -7,7 +7,10 @@ const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret'
 export interface User {
   id: string
   phone: string
-  name?: string
+  firstName?: string
+  lastName?: string
+  hnNumber?: string
+  temple?: string
   email?: string
   consent: boolean
 }
@@ -25,7 +28,10 @@ export function generateToken(user: User): string {
     { 
       id: user.id, 
       phone: user.phone,
-      name: user.name,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      hnNumber: user.hnNumber,
+      temple: user.temple,
       email: user.email,
       consent: user.consent
     },
@@ -43,14 +49,17 @@ export function verifyToken(token: string): User | null {
   }
 }
 
-export async function createUser(phone: string, password: string, name?: string, email?: string) {
+export async function createUser(phone: string, password: string, firstName?: string, lastName?: string, hnNumber?: string, temple?: string, email?: string) {
   const hashedPassword = await hashPassword(password)
   
   return prisma.user.create({
     data: {
       phone,
       password: hashedPassword,
-      name,
+      firstName,
+      lastName,
+      hnNumber,
+      temple,
       email,
       consent: false
     }

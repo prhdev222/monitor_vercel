@@ -13,7 +13,10 @@ const registerSchema = z.object({
   phone: z.string().min(10, 'เบอร์โทรศัพท์ต้องมีอย่างน้อย 10 หลัก'),
   password: z.string().min(6, 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร'),
   confirmPassword: z.string(),
-  name: z.string().optional(),
+  firstName: z.string().min(1, 'กรุณากรอกชื่อ'),
+  lastName: z.string().min(1, 'กรุณากรอกนามสกุล'),
+  hnNumber: z.string().min(1, 'กรุณากรอกเลขที่ HN'),
+  temple: z.string().min(1, 'กรุณากรอกชื่อวัด'),
   email: z.string().email('รูปแบบอีเมลไม่ถูกต้อง').optional().or(z.literal('')),
   consent: z.boolean().refine(val => val === true, 'ต้องยินยอมการเก็บข้อมูลส่วนบุคคล')
 }).refine((data) => data.password === data.confirmPassword, {
@@ -71,10 +74,10 @@ export default function RegisterPage() {
         <div className="text-center">
           <Heart className="h-12 w-12 text-primary-600 mx-auto" />
           <h2 className="mt-6 text-3xl font-bold text-gray-900">
-            ลงทะเบียน
+            ลงทะเบียน - โรงพยาบาลสงฆ์
           </h2>
           <p className="mt-2 text-sm text-gray-600">
-            หรือ{' '}
+            สำหรับพระคุณเจ้า หรือ{' '}
             <Link href="/login" className="font-medium text-primary-600 hover:text-primary-500">
               เข้าสู่ระบบ
             </Link>
@@ -99,17 +102,70 @@ export default function RegisterPage() {
               )}
             </div>
 
+            <div className="grid grid-cols-2 gap-4">
+              <div className="form-group">
+                <label htmlFor="firstName" className="form-label">
+                  ชื่อ *
+                </label>
+                <input
+                  {...register('firstName')}
+                  type="text"
+                  id="firstName"
+                  className="input-field"
+                  placeholder="ชื่อ"
+                />
+                {errors.firstName && (
+                  <p className="error-message">{errors.firstName.message}</p>
+                )}
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="lastName" className="form-label">
+                  นามสกุล *
+                </label>
+                <input
+                  {...register('lastName')}
+                  type="text"
+                  id="lastName"
+                  className="input-field"
+                  placeholder="นามสกุล"
+                />
+                {errors.lastName && (
+                  <p className="error-message">{errors.lastName.message}</p>
+                )}
+              </div>
+            </div>
+
             <div className="form-group">
-              <label htmlFor="name" className="form-label">
-                ชื่อ-นามสกุล
+              <label htmlFor="hnNumber" className="form-label">
+                เลขที่ HN (Hospital Number) *
               </label>
               <input
-                {...register('name')}
+                {...register('hnNumber')}
                 type="text"
-                id="name"
+                id="hnNumber"
                 className="input-field"
-                placeholder="ชื่อ-นามสกุล"
+                placeholder="HN123456"
               />
+              {errors.hnNumber && (
+                <p className="error-message">{errors.hnNumber.message}</p>
+              )}
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="temple" className="form-label">
+                วัด *
+              </label>
+              <input
+                {...register('temple')}
+                type="text"
+                id="temple"
+                className="input-field"
+                placeholder="ชื่อวัด"
+              />
+              {errors.temple && (
+                <p className="error-message">{errors.temple.message}</p>
+              )}
             </div>
 
             <div className="form-group">

@@ -34,7 +34,10 @@ export async function POST(request: NextRequest) {
     const token = generateToken({
       id: user.id,
       phone: user.phone,
-      name: user.name || undefined,
+      firstName: user.firstName || undefined,
+      lastName: user.lastName || undefined,
+      hnNumber: user.hnNumber || undefined,
+      temple: user.temple || undefined,
       email: user.email || undefined,
       consent: user.consent
     })
@@ -46,7 +49,10 @@ export async function POST(request: NextRequest) {
       user: {
         id: user.id,
         phone: user.phone,
-        name: user.name,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        hnNumber: user.hnNumber,
+        temple: user.temple,
         email: user.email,
         consent: user.consent
       }

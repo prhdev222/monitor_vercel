@@ -61,10 +61,10 @@ export default function LoginPage() {
         <div className="text-center">
           <Heart className="h-12 w-12 text-primary-600 mx-auto" />
           <h2 className="mt-6 text-3xl font-bold text-gray-900">
-            เข้าสู่ระบบ
+            เข้าสู่ระบบ - โรงพยาบาลสงฆ์
           </h2>
           <p className="mt-2 text-sm text-gray-600">
-            หรือ{' '}
+            สำหรับพระคุณเจ้า หรือ{' '}
             <Link href="/register" className="font-medium text-primary-600 hover:text-primary-500">
               ลงทะเบียนใหม่
             </Link>

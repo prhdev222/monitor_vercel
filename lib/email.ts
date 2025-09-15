@@ -12,7 +12,10 @@ const transporter = nodemailer.createTransport({
 
 export interface EmailData {
   user: {
-    name?: string
+    firstName?: string
+    lastName?: string
+    hnNumber?: string
+    temple?: string
     phone: string
     email?: string
   }
@@ -37,16 +40,18 @@ export async function sendDataToClinic(data: EmailData, type: 'full_data' | 'bef
   const { user, bloodPressureRecords, bloodSugarRecords } = data
   
   const subject = type === 'full_data' 
-    ? `ข้อมูลสุขภาพผู้ป่วย - ${user.name || user.phone}`
-    : `ข้อมูลสุขภาพก่อนลบ - ${user.name || user.phone} (3 เดือน)`
+    ? `ข้อมูลสุขภาพพระคุณเจ้า - ${user.firstName} ${user.lastName} (HN: ${user.hnNumber})`
+    : `ข้อมูลสุขภาพก่อนลบ - ${user.firstName} ${user.lastName} (HN: ${user.hnNumber}) (3 เดือน)`
 
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto;">
-      <h2 style="color: #2563eb;">รายงานข้อมูลสุขภาพผู้ป่วย</h2>
+      <h2 style="color: #f97316;">รายงานข้อมูลสุขภาพพระคุณเจ้า - โรงพยาบาลสงฆ์</h2>
       
-      <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
-        <h3>ข้อมูลผู้ป่วย</h3>
-        <p><strong>ชื่อ:</strong> ${user.name || 'ไม่ระบุ'}</p>
+      <div style="background: #fff7ed; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f97316;">
+        <h3>ข้อมูลพระคุณเจ้า</h3>
+        <p><strong>ชื่อ-นามสกุล:</strong> พระคุณเจ้า ${user.firstName} ${user.lastName}</p>
+        <p><strong>เลขที่ HN:</strong> ${user.hnNumber}</p>
+        <p><strong>วัด:</strong> ${user.temple}</p>
         <p><strong>เบอร์โทรศัพท์:</strong> ${user.phone}</p>
         <p><strong>อีเมล:</strong> ${user.email || 'ไม่ระบุ'}</p>
         <p><strong>วันที่ส่งข้อมูล:</strong> ${new Date().toLocaleDateString('th-TH')}</p>

@@ -6,7 +6,10 @@ import { z } from 'zod'
 const registerSchema = z.object({
   phone: z.string().min(10, 'เบอร์โทรศัพท์ต้องมีอย่างน้อย 10 หลัก'),
   password: z.string().min(6, 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร'),
-  name: z.string().optional(),
+  firstName: z.string().min(1, 'กรุณากรอกชื่อ'),
+  lastName: z.string().min(1, 'กรุณากรอกนามสกุล'),
+  hnNumber: z.string().min(1, 'กรุณากรอกเลขที่ HN'),
+  temple: z.string().min(1, 'กรุณากรอกชื่อวัด'),
   email: z.string().email('รูปแบบอีเมลไม่ถูกต้อง').optional(),
   consent: z.boolean().refine(val => val === true, 'ต้องยินยอมการเก็บข้อมูลส่วนบุคคล')
 })
@@ -14,7 +17,7 @@ const registerSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { phone, password, name, email, consent } = registerSchema.parse(body)
+    const { phone, password, firstName, lastName, hnNumber, temple, email, consent } = registerSchema.parse(body)
 
     // Check if user already exists
     const existingUser = await findUserByPhone(phone)
@@ -26,7 +29,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create new user
-    const user = await createUser(phone, password, name, email)
+    const user = await createUser(phone, password, firstName, lastName, hnNumber, temple, email)
     
     // Update consent status
     await prisma.user.update({
@@ -40,7 +43,10 @@ export async function POST(request: NextRequest) {
       user: {
         id: user.id,
         phone: user.phone,
-        name: user.name,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        hnNumber: user.hnNumber,
+        temple: user.temple,
         email: user.email,
         consent: user.consent
       }
