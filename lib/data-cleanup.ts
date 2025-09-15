@@ -128,6 +128,10 @@ export async function runDataCleanup() {
     return { success: true, message: 'Data cleanup completed successfully' }
   } catch (error) {
     console.error('Data cleanup failed:', error)
-    return { success: false, message: 'Data cleanup failed', error: error.message }
+    return { 
+      success: false, 
+      message: 'Data cleanup failed', 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    }
   }
 }
