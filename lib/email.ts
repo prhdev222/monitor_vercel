@@ -28,7 +28,7 @@ export interface EmailData {
     recordedAt: Date
   }>
   bloodSugarRecords: Array<{
-    value: number
+    value: number | string
     unit: string
     timeOfDay: string
     notes?: string

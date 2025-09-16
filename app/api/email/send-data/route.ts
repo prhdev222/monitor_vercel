@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
         recordedAt: record.recordedAt
       })),
       bloodSugarRecords: bloodSugarRecords.map(record => ({
-        value: record.value,
+        value: record.value === 'high' ? 'high' : record.value === 'low' ? 'low' : Number(record.value),
         unit: record.unit,
         timeOfDay: record.timeOfDay,
         notes: record.notes || undefined,

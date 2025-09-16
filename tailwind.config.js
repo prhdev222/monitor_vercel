@@ -7,6 +7,13 @@ module.exports = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        'thai': ['THSarabunNew', 'Inter', 'system-ui', 'sans-serif'],
+        'sans': ['THSarabunNew', 'Inter', 'system-ui', 'sans-serif'],
+      },
+      screens: {
+        'xs': '475px',
+      },
       colors: {
         primary: {
           50: '#fff7ed',

@@ -105,3 +105,100 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+export async function PUT(request: NextRequest) {
+  try {
+    const token = request.cookies.get('auth-token')?.value
+    if (!token) {
+      return NextResponse.json({ error: 'ไม่พบ token' }, { status: 401 })
+    }
+
+    const user = verifyToken(token)
+    if (!user) {
+      return NextResponse.json({ error: 'Token ไม่ถูกต้อง' }, { status: 401 })
+    }
+
+    const body = await request.json()
+    const { id, systolic, diastolic, pulse, timeOfDay, notes, recordedAt } = bloodPressureSchema.extend({
+      id: z.string()
+    }).parse(body)
+
+    const record = await prisma.bloodPressureRecord.update({
+      where: {
+        id,
+        userId: user.id
+      },
+      data: {
+        systolic,
+        diastolic,
+        pulse,
+        timeOfDay,
+        notes,
+        recordedAt: recordedAt ? new Date(recordedAt) : undefined
+      }
+    })
+
+    return NextResponse.json({
+      success: true,
+      message: 'แก้ไขข้อมูลความดันโลหิตสำเร็จ',
+      record
+    })
+
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: error.errors[0].message },
+        { status: 400 }
+      )
+    }
+
+    console.error('Blood pressure update error:', error)
+    return NextResponse.json(
+      { error: 'เกิดข้อผิดพลาดในการแก้ไขข้อมูล' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const token = request.cookies.get('auth-token')?.value
+    if (!token) {
+      return NextResponse.json({ error: 'ไม่พบ token' }, { status: 401 })
+    }
+
+    const user = verifyToken(token)
+    if (!user) {
+      return NextResponse.json({ error: 'Token ไม่ถูกต้อง' }, { status: 401 })
+    }
+
+    const body = await request.json()
+    const { id } = z.object({ id: z.string() }).parse(body)
+
+    await prisma.bloodPressureRecord.delete({
+      where: {
+        id,
+        userId: user.id
+      }
+    })
+
+    return NextResponse.json({
+      success: true,
+      message: 'ลบข้อมูลความดันโลหิตสำเร็จ'
+    })
+
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: error.errors[0].message },
+        { status: 400 }
+      )
+    }
+
+    console.error('Blood pressure delete error:', error)
+    return NextResponse.json(
+      { error: 'เกิดข้อผิดพลาดในการลบข้อมูล' },
+      { status: 500 }
+    )
+  }
+}

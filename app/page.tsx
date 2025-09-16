@@ -14,7 +14,7 @@ export default function HomePage() {
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center">
               <Heart className="h-8 w-8 text-primary-600 mr-3" />
-              <h1 className="text-2xl font-bold text-gray-900">ระบบบันทึกข้อมูลสุขภาพ - โรงพยาบาลสงฆ์</h1>
+              <h1 className="text-lg sm:text-2xl font-bold text-gray-900">ระบบบันทึกข้อมูลสุขภาพดิจิตอล - อายุรกรรม โรงพยาบาลสงฆ์</h1>
             </div>
             <div className="flex space-x-4">
               <Link href="/login" className="btn-secondary">
@@ -64,9 +64,9 @@ export default function HomePage() {
             
             <div className="card text-center">
               <Users className="h-12 w-12 text-secondary-600 mx-auto mb-4" />
-              <h4 className="text-xl font-semibold mb-2">แชร์กับแพทย์</h4>
+              <h4 className="text-xl font-semibold mb-2">แชร์กับคลินิกอายุรกรรม</h4>
               <p className="text-gray-600">
-                ส่งข้อมูลให้แพทย์เพื่อติดตามและให้คำแนะนำ
+                ส่งข้อมูลให้คลินิกเพื่อติดตามและให้คำแนะนำนัดพบแพทย์ต่อไป
               </p>
             </div>
             
@@ -95,16 +95,16 @@ export default function HomePage() {
           </h4>
           <p className="text-yellow-700">
             ระบบจะเก็บข้อมูลของคุณเป็นระยะเวลา 3 เดือนเท่านั้น 
-            และจะลบข้อมูลอัตโนมัติเพื่อความปลอดภัย 
-            คุณสามารถยกเลิกการยินยอมได้ตลอดเวลา
+            และจะลบข้อมูลอัตโนมัติ
           </p>
         </div>
+
       </main>
 
       {/* Footer */}
       <footer className="bg-gray-800 text-white py-8 mt-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <p>&copy; 2024 ระบบบันทึกข้อมูลสุขภาพ. สงวนลิขสิทธิ์.</p>
+          <p>&copy; 2025 ระบบบันทึกข้อมูลสุขภาพ. สงวนลิขสิทธิ์.</p>
         </div>
       </footer>
     </div>

@@ -50,7 +50,7 @@ model BloodPressureRecord {
 
 model BloodSugarRecord {
   id         String   @id @default(cuid())
-  value      Float
+  value      String   // Can be number as string or 'high' or 'low'
   unit       String   @default("mg/dL")
   timeOfDay  String   // before_breakfast, before_lunch, before_dinner, after_meal_2h, before_bed
   notes      String?
