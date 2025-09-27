@@ -87,7 +87,10 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<'bp' | 'bs' | 'history'>('bp')
   const [isLoading, setIsLoading] = useState(true)
   const [isSending, setIsSending] = useState(false)
+  const [lastSentTime, setLastSentTime] = useState<number | null>(null)
   const [editingRecord, setEditingRecord] = useState<{type: 'bp' | 'bs', id: string} | null>(null)
+  const [showGuidelines, setShowGuidelines] = useState(false)
+  const [isLineBrowser, setIsLineBrowser] = useState(false)
   const router = useRouter()
 
   // ฟังก์ชันแปลงวันที่ พ.ศ. เป็น ISO string
@@ -170,6 +173,103 @@ export default function DashboardPage() {
     return `${day}/${month}/${year}`
   }
 
+  // ฟังก์ชันตรวจสอบระดับความดันโลหิต
+  const getBloodPressureLevel = (systolic: number, diastolic: number) => {
+    if (systolic < 70 || diastolic < 40) {
+      return { level: 'very-low', color: 'purple', text: 'ต่ำมาก', warning: '⚠️ อันตราย! ความดันโลหิตต่ำมาก ควรรีบพบแพทย์' }
+    }
+    if (systolic < 90 || diastolic < 60) {
+      return { level: 'low', color: 'blue', text: 'ต่ำ', warning: '⚠️ ความดันโลหิตต่ำ ควรปรึกษาแพทย์' }
+    }
+    if (systolic < 140 && diastolic < 90) {
+      return { level: 'normal', color: 'green', text: 'ปกติ', warning: '' }
+    }
+    if ((systolic >= 140 && systolic <= 159) || (diastolic >= 90 && diastolic <= 99)) {
+      return { level: 'high-1', color: 'yellow', text: 'สูงเล็กน้อย', warning: '⚠️ ความดันโลหิตสูงเล็กน้อย ควรปรับพฤติกรรมและติดตาม' }
+    }
+    if ((systolic >= 160 && systolic <= 179) || (diastolic >= 100 && diastolic <= 109)) {
+      return { level: 'high-2', color: 'orange', text: 'สูงปานกลาง', warning: '⚠️ ความดันโลหิตสูงปานกลาง ควรพบแพทย์' }
+    }
+    return { level: 'high-3', color: 'red', text: 'สูงมาก', warning: '🚨 อันตราย! ความดันโลหิตสูงมาก ควรรีบพบแพทย์' }
+  }
+
+  // ฟังก์ชันตรวจสอบระดับน้ำตาลในเลือดสำหรับหลังอาหาร 2 ชั่วโมง
+  const getBloodSugarLevelPostMeal = (value: number | string) => {
+    // แปลงค่า high/low เป็นตัวเลขสำหรับการตรวจสอบ
+    let numericValue: number
+    if (value === 'high') {
+      return { level: 'very-high', color: 'red', text: 'สูงมาก', warning: '🚨 อันตราย! น้ำตาลในเลือดสูงมาก ควรรีบพบแพทย์' }
+    }
+    if (value === 'low') {
+      return { level: 'very-low', color: 'purple', text: 'ต่ำมาก', warning: '🚨 อันตราย! น้ำตาลในเลือดต่ำมาก ควรรีบพบแพทย์' }
+    }
+    if (typeof value === 'number') {
+      numericValue = value
+    } else if (typeof value === 'string') {
+      const parsed = Number(value)
+      if (isNaN(parsed)) {
+        return { level: 'unknown', color: 'gray', text: 'ไม่ทราบ', warning: '' }
+      }
+      numericValue = parsed
+    } else {
+      return { level: 'unknown', color: 'gray', text: 'ไม่ทราบ', warning: '' }
+    }
+
+    if (numericValue < 140) {
+      return { level: 'normal', color: 'green', text: 'ปกติ', warning: '' }
+    }
+    if (numericValue >= 140 && numericValue <= 199) {
+      return { level: 'high', color: 'yellow', text: 'เริ่มสูง', warning: '⚠️ น้ำตาลในเลือดเริ่มสูง ควรปรับพฤติกรรมและติดตาม' }
+    }
+    if (numericValue >= 200 && numericValue <= 300) {
+      return { level: 'very-high', color: 'orange', text: 'สูง', warning: '⚠️ น้ำตาลในเลือดสูง ควรพบแพทย์' }
+    }
+    return { level: 'dangerous', color: 'red', text: 'สูงมาก', warning: '🚨 อันตราย! น้ำตาลในเลือดสูงมาก ควรรีบพบแพทย์' }
+  }
+
+  // ฟังก์ชันตรวจสอบระดับน้ำตาลในเลือด
+  const getBloodSugarLevel = (value: number | string) => {
+    // แปลงค่า high/low เป็นตัวเลขสำหรับการตรวจสอบ
+    let numericValue: number
+    if (value === 'high') {
+      return { level: 'dangerous', color: 'red', text: 'สูงอันตราย', warning: '🚨 อันตราย! น้ำตาลในเลือดสูงมาก ควรรีบพบแพทย์' }
+    }
+    if (value === 'low') {
+      return { level: 'very-low', color: 'purple', text: 'ต่ำมาก', warning: '🚨 อันตราย! น้ำตาลในเลือดต่ำมาก ควรรีบพบแพทย์' }
+    }
+    if (typeof value === 'number') {
+      numericValue = value
+    } else if (typeof value === 'string') {
+      const parsed = Number(value)
+      if (isNaN(parsed)) {
+        return { level: 'unknown', color: 'gray', text: 'ไม่ทราบ', warning: '' }
+      }
+      numericValue = parsed
+    } else {
+      return { level: 'unknown', color: 'gray', text: 'ไม่ทราบ', warning: '' }
+    }
+
+    if (numericValue < 60) {
+      return { level: 'very-low', color: 'purple', text: 'ต่ำมาก', warning: '🚨 อันตราย! น้ำตาลในเลือดต่ำมาก ควรรีบพบแพทย์' }
+    }
+    if (numericValue < 70) {
+      return { level: 'low', color: 'blue', text: 'ต่ำ', warning: '⚠️ น้ำตาลในเลือดต่ำ ควรปรึกษาแพทย์' }
+    }
+    if (numericValue >= 70 && numericValue <= 100) {
+      return { level: 'normal', color: 'green', text: 'ปกติ', warning: '' }
+    }
+    if (numericValue >= 101 && numericValue <= 125) {
+      return { level: 'high', color: 'yellow', text: 'เริ่มจะสูง', warning: '⚠️ น้ำตาลในเลือดเริ่มจะสูง ควรปรับพฤติกรรมและติดตาม' }
+    }
+    if (numericValue >= 126 && numericValue <= 200) {
+      return { level: 'very-high', color: 'orange', text: 'สูง', warning: '⚠️ น้ำตาลในเลือดสูง ควรพบแพทย์' }
+    }
+    if (numericValue > 200 && numericValue <= 400) {
+      return { level: 'very-high-dark', color: 'orange', text: 'สูงมาก', warning: '⚠️ น้ำตาลในเลือดสูงมาก ควรพบแพทย์โดยเร็ว' }
+    }
+    return { level: 'dangerous', color: 'red', text: 'สูงอันตราย', warning: '🚨 อันตราย! น้ำตาลในเลือดสูงอันตราย ควรรีบพบแพทย์' }
+  }
+
   const bpForm = useForm<BloodPressureForm>({
     resolver: zodResolver(bloodPressureSchema),
     defaultValues: {
@@ -194,6 +294,25 @@ export default function DashboardPage() {
   useEffect(() => {
     checkAuth()
     loadData()
+    
+    // ตรวจสอบ LINE Browser
+    const userAgent = navigator.userAgent
+    const isLine = /Line/i.test(userAgent) || 
+                   /LineBrowser/i.test(userAgent) ||
+                   /LINE/i.test(userAgent) ||
+                   userAgent.includes('Line')
+    
+    console.log('User Agent:', userAgent)
+    console.log('Is LINE Browser:', isLine)
+    setIsLineBrowser(isLine)
+    
+    // แสดง toast เพื่อแจ้งผู้ใช้
+    if (isLine) {
+      toast.success('ตรวจพบ LINE Browser - ระบบจะใช้ HTML แทน PDF', {
+        duration: 3000,
+        position: 'top-center'
+      })
+    }
   }, [])
 
   const checkAuth = async () => {
@@ -216,8 +335,8 @@ export default function DashboardPage() {
   const loadData = async () => {
     try {
       const [bpResponse, bsResponse] = await Promise.all([
-        fetch('/api/blood-pressure'),
-        fetch('/api/blood-sugar')
+        fetch('/api/blood-pressure?limit=30'), // จำกัดแค่ 30 รายการล่าสุด
+        fetch('/api/blood-sugar?limit=30')
       ])
 
       const bpResult = await bpResponse.json()
@@ -383,6 +502,28 @@ export default function DashboardPage() {
       return
     }
 
+    // ตรวจสอบการส่งซ้ำ - ห้ามส่งซ้ำภายใน 5 นาที
+    const now = Date.now()
+    const COOLDOWN_PERIOD = 5 * 60 * 1000 // 5 นาที
+    
+    if (lastSentTime && (now - lastSentTime) < COOLDOWN_PERIOD) {
+      const remainingTime = Math.ceil((COOLDOWN_PERIOD - (now - lastSentTime)) / 1000 / 60)
+      toast.error(`กรุณารอ ${remainingTime} นาที ก่อนส่งข้อมูลใหม่`, {
+        position: 'top-center',
+        duration: 4000,
+      })
+      return
+    }
+
+    // ตรวจสอบว่ากำลังส่งอยู่หรือไม่
+    if (isSending) {
+      toast.error('กำลังส่งข้อมูลอยู่ กรุณารอสักครู่', {
+        position: 'top-center',
+        duration: 3000,
+      })
+      return
+    }
+
     setIsSending(true)
     const loadingToast = toast.loading('กำลังส่งข้อมูลให้คลินิก...', {
       position: 'top-center',
@@ -398,6 +539,9 @@ export default function DashboardPage() {
       toast.dismiss(loadingToast)
       
       if (result.success) {
+        // บันทึกเวลาที่ส่งสำเร็จ
+        setLastSentTime(now)
+        
         toast.success('ส่งข้อมูลให้คลินิกสำเร็จ!', {
           position: 'top-center',
           duration: 5000,
@@ -409,6 +553,11 @@ export default function DashboardPage() {
           },
         })
       } else {
+        // จัดการ error 429 (Too Many Requests)
+        if (response.status === 429 && result.cooldownRemaining) {
+          setLastSentTime(now - (5 * 60 * 1000 - result.cooldownRemaining * 60 * 1000))
+        }
+        
         toast.error(result.error + (result.details ? `: ${result.details}` : ''), {
           position: 'top-center',
           duration: 5000,
@@ -472,6 +621,23 @@ export default function DashboardPage() {
   // สร้างไฟล์ PDF ข้อมูล 7 วันล่าสุด
   const generateWeeklyPdf = async () => {
     try {
+      // ตรวจสอบว่าเป็น LINE Browser หรือไม่ (หลายวิธี)
+      const userAgent = navigator.userAgent
+      const isLineBrowser = /Line/i.test(userAgent) || 
+                           /LineBrowser/i.test(userAgent) ||
+                           /LINE/i.test(userAgent) ||
+                           userAgent.includes('Line')
+      
+      console.log('User Agent:', userAgent)
+      console.log('Is LINE Browser:', isLineBrowser)
+      
+      if (isLineBrowser) {
+        // สำหรับ LINE Browser ใช้วิธีสร้าง HTML และแปลงเป็น PDF
+        console.log('Using LINE Browser HTML generation')
+        await generatePdfForLineBrowser()
+        return
+      }
+
       const [{ default: jsPDF }, autoTable, { thaiFont }] = await Promise.all([
         import('jspdf'),
         import('jspdf-autotable') as any,
@@ -585,7 +751,222 @@ export default function DashboardPage() {
       doc.save('weekly-health-report.pdf')
     } catch (error) {
       console.error('Error generating PDF:', error)
-      toast.error('เกิดข้อผิดพลาดในการสร้าง PDF')
+      
+      // ถ้า PDF generation ล้มเหลว ให้ลองใช้วิธี HTML
+      toast.error('ไม่สามารถสร้าง PDF ได้ กำลังสร้างไฟล์ HTML แทน...', {
+        duration: 3000
+      })
+      
+      try {
+        await generatePdfForLineBrowser()
+      } catch (htmlError) {
+        console.error('Error generating HTML fallback:', htmlError)
+        toast.error('เกิดข้อผิดพลาดในการสร้างไฟล์รายงาน')
+      }
+    }
+  }
+
+  // ฟังก์ชันสำหรับสร้าง PDF ใน LINE Browser
+  const generatePdfForLineBrowser = async () => {
+    try {
+      // สร้าง HTML content สำหรับ PDF
+      const timeMap: Record<string, string> = {
+        morning: 'เช้า',
+        afternoon: 'กลางวัน',
+        evening: 'เย็น',
+        before_bed: 'ก่อนนอน',
+        before_breakfast: 'ก่อนอาหารเช้า',
+        before_lunch: 'ก่อนอาหารกลางวัน',
+        before_dinner: 'ก่อนอาหารเย็น',
+        after_meal_2h: 'หลังอาหาร 2 ชม.'
+      }
+
+      const bpRows = bloodPressureRecords
+        .slice(0, 50)
+        .sort((a, b) => new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime())
+        .slice(-7)
+        .map(r => ({
+          date: new Date(r.recordedAt).toLocaleDateString('th-TH'),
+          time: timeMap[r.timeOfDay] || r.timeOfDay,
+          systolic: r.systolic,
+          diastolic: r.diastolic,
+          pulse: r.pulse || '-'
+        }))
+
+      const sugarRows = bloodSugarRecords
+        .slice(0, 50)
+        .sort((a, b) => new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime())
+        .slice(-7)
+        .map(r => ({
+          date: new Date(r.recordedAt).toLocaleDateString('th-TH'),
+          time: timeMap[r.timeOfDay] || r.timeOfDay,
+          value: r.value === 'high' ? 'สูงมาก' : r.value === 'low' ? 'ต่ำมาก' : String(r.value)
+        }))
+
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>รายงานข้อมูลสุขภาพ 7 วันล่าสุด</title>
+          <style>
+            body { 
+              font-family: 'THSarabunNew', Arial, sans-serif; 
+              margin: 20px; 
+              font-size: 14px;
+              line-height: 1.6;
+            }
+            .header { 
+              text-align: center; 
+              margin-bottom: 30px; 
+              border-bottom: 2px solid #f97316;
+              padding-bottom: 10px;
+            }
+            .section { 
+              margin: 20px 0; 
+            }
+            .section-title { 
+              color: #f97316; 
+              font-size: 18px; 
+              font-weight: bold; 
+              margin-bottom: 10px;
+            }
+            table { 
+              width: 100%; 
+              border-collapse: collapse; 
+              margin: 10px 0;
+            }
+            th, td { 
+              border: 1px solid #ddd; 
+              padding: 8px; 
+              text-align: center;
+            }
+            th { 
+              background-color: #f97316; 
+              color: white; 
+              font-weight: bold;
+            }
+            .no-data { 
+              text-align: center; 
+              color: #666; 
+              font-style: italic;
+              padding: 20px;
+            }
+            @media print {
+              body { margin: 0; }
+              .no-print { display: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>รายงานข้อมูลสุขภาพ 7 วันล่าสุด</h1>
+            <p>พระคุณเจ้า ${user?.firstName} ${user?.lastName} ${user?.hnNumber ? `(HN: ${user.hnNumber})` : ''}</p>
+            <p>วันที่สร้างรายงาน: ${new Date().toLocaleDateString('th-TH')}</p>
+          </div>
+
+          <div class="section">
+            <h2 class="section-title">ความดันโลหิต</h2>
+            ${bpRows.length > 0 ? `
+              <table>
+                <thead>
+                  <tr>
+                    <th>วันที่</th>
+                    <th>เวลา</th>
+                    <th>Systolic</th>
+                    <th>Diastolic</th>
+                    <th>Pulse</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${bpRows.map(row => `
+                    <tr>
+                      <td>${row.date}</td>
+                      <td>${row.time}</td>
+                      <td>${row.systolic}</td>
+                      <td>${row.diastolic}</td>
+                      <td>${row.pulse}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            ` : '<div class="no-data">ไม่มีข้อมูลความดันโลหิต</div>'}
+          </div>
+
+          <div class="section">
+            <h2 class="section-title">ผลเจาะเลือดดูค่าน้ำตาลปลายนิ้ว</h2>
+            ${sugarRows.length > 0 ? `
+              <table>
+                <thead>
+                  <tr>
+                    <th>วันที่</th>
+                    <th>เวลา</th>
+                    <th>ค่า (mg/dL)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${sugarRows.map(row => `
+                    <tr>
+                      <td>${row.date}</td>
+                      <td>${row.time}</td>
+                      <td>${row.value}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            ` : '<div class="no-data">ไม่มีข้อมูลน้ำตาลในเลือด</div>'}
+          </div>
+
+          <div style="margin-top: 30px; text-align: center; color: #666; font-size: 12px;">
+            <p>รายงานนี้ถูกสร้างจากระบบบันทึกข้อมูลสุขภาพดิจิตอล - โรงพยาบาลสงฆ์</p>
+          </div>
+        </body>
+        </html>
+      `
+
+      // สำหรับ LINE Browser ใช้วิธีเปิดในหน้าต่างใหม่
+      const newWindow = window.open('', '_blank')
+      if (newWindow) {
+        newWindow.document.write(htmlContent)
+        newWindow.document.close()
+        
+        // พยายามดาวน์โหลดด้วย
+        try {
+          const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' })
+          const url = URL.createObjectURL(blob)
+          
+          const link = document.createElement('a')
+          link.href = url
+          link.download = 'weekly-health-report.html'
+          link.style.display = 'none'
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+          
+          URL.revokeObjectURL(url)
+        } catch (downloadError) {
+          console.log('Download failed, but HTML opened in new window')
+        }
+      } else {
+        // ถ้าเปิดหน้าต่างใหม่ไม่ได้ ให้แสดง HTML ในหน้าเดิม
+        const newPage = window.open('about:blank', '_blank')
+        if (newPage) {
+          newPage.document.write(htmlContent)
+          newPage.document.close()
+        } else {
+          // วิธีสุดท้าย: แสดงใน alert
+          alert('กรุณาคัดลอกข้อมูลนี้ไปเปิดในเบราว์เซอร์อื่น:\n\n' + htmlContent.substring(0, 500) + '...')
+        }
+      }
+      
+      toast.success('ดาวน์โหลดไฟล์ HTML สำเร็จ! เปิดด้วยเบราว์เซอร์เพื่อพิมพ์เป็น PDF', {
+        duration: 5000,
+        position: 'top-center'
+      })
+      
+    } catch (error) {
+      console.error('Error generating PDF for LINE Browser:', error)
+      toast.error('เกิดข้อผิดพลาดในการสร้างไฟล์ PDF สำหรับ LINE Browser')
     }
   }
 
@@ -823,13 +1204,25 @@ export default function DashboardPage() {
                   />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">หมายเหตุ</label>
+                  <label className="form-label">หมายเหตุ (ไม่เกิน 50 ตัวอักษร)</label>
                   <textarea
-                    {...bpForm.register('notes')}
+                    {...bpForm.register('notes', {
+                      maxLength: {
+                        value: 50,
+                        message: 'หมายเหตุไม่เกิน 50 ตัวอักษร'
+                      }
+                    })}
                     className="input-field"
-                    rows={3}
-                    placeholder="หมายเหตุเพิ่มเติม..."
+                    rows={2}
+                    placeholder="หมายเหตุสั้นๆ..."
+                    maxLength={50}
                   />
+                  {bpForm.formState.errors.notes && (
+                    <p className="error-message">{bpForm.formState.errors.notes.message}</p>
+                  )}
+                  <p className="text-xs text-gray-500 mt-1">
+                    {bpForm.watch('notes')?.length || 0}/50 ตัวอักษร
+                  </p>
                 </div>
                 <div className="flex gap-2">
                   <button type="submit" className="flex-1 btn-primary">
@@ -859,17 +1252,49 @@ export default function DashboardPage() {
                     evening: 'เย็น',
                     before_bed: 'ก่อนนอน'
                   }
+                  const bpLevel = getBloodPressureLevel(record.systolic, record.diastolic)
+                  const colorClasses = {
+                    green: 'bg-green-50 border-green-200',
+                    yellow: 'bg-yellow-50 border-yellow-200',
+                    orange: 'bg-orange-50 border-orange-200',
+                    red: 'bg-red-50 border-red-200',
+                    blue: 'bg-blue-50 border-blue-200',
+                    purple: 'bg-purple-50 border-purple-200'
+                  }
+                  const textColorClasses = {
+                    green: 'text-green-800',
+                    yellow: 'text-yellow-800',
+                    orange: 'text-orange-800',
+                    red: 'text-red-800',
+                    blue: 'text-blue-800',
+                    purple: 'text-purple-800'
+                  }
                   return (
-                    <div key={record.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                    <div key={record.id} className={`flex justify-between items-center p-3 rounded-lg border ${colorClasses[bpLevel.color as keyof typeof colorClasses]}`}>
                       <div className="flex-1">
-                        <p className="font-medium">
-                          {record.systolic}/{record.diastolic} mmHg
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <p className={`font-medium ${textColorClasses[bpLevel.color as keyof typeof textColorClasses]}`}>
+                            {record.systolic}/{record.diastolic} mmHg
+                          </p>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            bpLevel.color === 'green' ? 'bg-green-100 text-green-800' :
+                            bpLevel.color === 'yellow' ? 'bg-yellow-100 text-yellow-800' :
+                            bpLevel.color === 'orange' ? 'bg-orange-100 text-orange-800' :
+                            bpLevel.color === 'red' ? 'bg-red-100 text-red-800' :
+                            bpLevel.color === 'blue' ? 'bg-blue-100 text-blue-800' :
+                            'bg-purple-100 text-purple-800'
+                          }`}>
+                            {bpLevel.text}
+                          </span>
+                        </div>
                         <p className="text-sm text-gray-600">
                           {timeLabels[record.timeOfDay as keyof typeof timeLabels]} - {new Date(record.recordedAt).toLocaleDateString('th-TH')}
                         </p>
                         {record.pulse && (
                           <p className="text-sm text-gray-600">Pulse: {record.pulse}</p>
+                        )}
+                        {bpLevel.warning && (
+                          <p className="text-xs text-red-600 mt-1 font-medium">{bpLevel.warning}</p>
                         )}
                       </div>
                       <div className="flex gap-2 ml-4">
@@ -1025,13 +1450,25 @@ export default function DashboardPage() {
                   </select>
                 </div>
                 <div className="form-group">
-                  <label className="form-label">หมายเหตุ</label>
+                  <label className="form-label">หมายเหตุ (ไม่เกิน 50 ตัวอักษร)</label>
                   <textarea
-                    {...bsForm.register('notes')}
+                    {...bsForm.register('notes', {
+                      maxLength: {
+                        value: 50,
+                        message: 'หมายเหตุไม่เกิน 50 ตัวอักษร'
+                      }
+                    })}
                     className="input-field"
-                    rows={3}
-                    placeholder="หมายเหตุเพิ่มเติม..."
+                    rows={2}
+                    placeholder="หมายเหตุสั้นๆ..."
+                    maxLength={50}
                   />
+                  {bsForm.formState.errors.notes && (
+                    <p className="error-message">{bsForm.formState.errors.notes.message}</p>
+                  )}
+                  <p className="text-xs text-gray-500 mt-1">
+                    {bsForm.watch('notes')?.length || 0}/50 ตัวอักษร
+                  </p>
                 </div>
                 <div className="flex gap-2">
                   <button type="submit" className="flex-1 btn-primary">
@@ -1062,17 +1499,54 @@ export default function DashboardPage() {
                     after_meal_2h: 'หลังอาหาร 2 ชม.',
                     before_bed: 'ก่อนนอน'
                   }
+                  const bsLevel = record.timeOfDay === 'after_meal_2h' 
+                    ? getBloodSugarLevelPostMeal(record.value)
+                    : getBloodSugarLevel(record.value)
+                  const colorClasses = {
+                    green: 'bg-green-50 border-green-200',
+                    yellow: 'bg-yellow-50 border-yellow-200',
+                    orange: 'bg-orange-50 border-orange-200',
+                    red: 'bg-red-50 border-red-200',
+                    blue: 'bg-blue-50 border-blue-200',
+                    purple: 'bg-purple-50 border-purple-200',
+                    gray: 'bg-gray-50 border-gray-200'
+                  }
+                  const textColorClasses = {
+                    green: 'text-green-800',
+                    yellow: 'text-yellow-800',
+                    orange: 'text-orange-800',
+                    red: 'text-red-800',
+                    blue: 'text-blue-800',
+                    purple: 'text-purple-800',
+                    gray: 'text-gray-800'
+                  }
                   return (
-                    <div key={record.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                    <div key={record.id} className={`flex justify-between items-center p-3 rounded-lg border ${colorClasses[bsLevel.color as keyof typeof colorClasses]}`}>
                       <div className="flex-1">
-                        <p className="font-medium">
-                          {record.value === 'high' ? 'High (สูงมาก)' : 
-                           record.value === 'low' ? 'Low (ต่ำมาก)' : 
-                           `${record.value} ${record.unit}`}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <p className={`font-medium ${textColorClasses[bsLevel.color as keyof typeof textColorClasses]}`}>
+                            {record.value === 'high' ? 'High (สูงมาก)' : 
+                             record.value === 'low' ? 'Low (ต่ำมาก)' : 
+                             `${record.value} ${record.unit}`}
+                          </p>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            bsLevel.color === 'green' ? 'bg-green-100 text-green-800' :
+                            bsLevel.color === 'yellow' ? 'bg-yellow-100 text-yellow-800' :
+                            bsLevel.color === 'orange' ? (bsLevel.level === 'very-high-dark' ? 'bg-orange-200 text-orange-900' : 'bg-orange-100 text-orange-800') :
+                            bsLevel.color === 'red' ? 'bg-red-100 text-red-800' :
+                            bsLevel.color === 'blue' ? 'bg-blue-100 text-blue-800' :
+                            bsLevel.color === 'purple' ? 'bg-purple-100 text-purple-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {bsLevel.text}
+                          </span>
+                        </div>
                         <p className="text-sm text-gray-600">
                           {timeLabels[record.timeOfDay as keyof typeof timeLabels]} - {new Date(record.recordedAt).toLocaleDateString('th-TH')}
                         </p>
+                        {bsLevel.warning && (
+                          <p className="text-xs text-red-600 mt-1 font-medium">{bsLevel.warning}</p>
+                        )}
                       </div>
                       <div className="flex gap-2 ml-4">
                         <button
@@ -1104,6 +1578,134 @@ export default function DashboardPage() {
         {/* History and Charts */}
         {activeTab === 'history' && (
           <div className="space-y-4 sm:space-y-8">
+            {/* Guidelines Button */}
+            <div className="card">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold">เกณฑ์และคำแนะนำ</h3>
+                <button
+                  onClick={() => setShowGuidelines(!showGuidelines)}
+                  className="btn-secondary flex items-center gap-2"
+                >
+                  <BarChart3 className="h-4 w-4" />
+                  {showGuidelines ? 'ซ่อนเกณฑ์' : 'แสดงเกณฑ์'}
+                </button>
+              </div>
+              
+              {showGuidelines && (
+                <div className="space-y-6">
+                  {/* Blood Pressure Guidelines */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h4 className="text-lg font-semibold text-blue-800 mb-3 flex items-center">
+                      <Activity className="h-5 w-5 mr-2" />
+                      เกณฑ์ความดันโลหิต
+                    </h4>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 bg-green-500 rounded"></div>
+                          <span className="font-medium">ปกติ:</span>
+                          <span>SBP &lt; 140, DBP &lt; 90</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 bg-yellow-500 rounded"></div>
+                          <span className="font-medium">สูงเล็กน้อย:</span>
+                          <span>SBP 140-159, DBP 90-99</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 bg-orange-500 rounded"></div>
+                          <span className="font-medium">สูงปานกลาง:</span>
+                          <span>SBP 160-179, DBP 100-109</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 bg-red-500 rounded"></div>
+                          <span className="font-medium">สูงมาก:</span>
+                          <span>SBP &gt; 180, DBP &gt; 109</span>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 bg-blue-500 rounded"></div>
+                          <span className="font-medium">ต่ำ:</span>
+                          <span>SBP &lt; 90, DBP &lt; 60</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 bg-purple-500 rounded"></div>
+                          <span className="font-medium">ต่ำมาก:</span>
+                          <span>SBP &lt; 70, DBP &lt; 40</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Blood Sugar Guidelines */}
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <h4 className="text-lg font-semibold text-green-800 mb-3 flex items-center">
+                      <Heart className="h-5 w-5 mr-2" />
+                      เกณฑ์น้ำตาลในเลือด
+                    </h4>
+                    
+                    {/* Before Meal */}
+                    <div className="mb-4">
+                      <h5 className="font-semibold text-gray-700 mb-2">ก่อนอาหาร (Fasting)</h5>
+                      <div className="grid md:grid-cols-2 gap-2 text-sm">
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 bg-green-500 rounded"></div>
+                          <span>ปกติ: 70-100 mg/dL</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 bg-yellow-500 rounded"></div>
+                          <span>เริ่มจะสูง: 101-125 mg/dL</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 bg-orange-500 rounded"></div>
+                          <span>สูง: 126-200 mg/dL</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 bg-orange-600 rounded"></div>
+                          <span>สูงมาก: 201-400 mg/dL</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 bg-red-500 rounded"></div>
+                          <span>สูงอันตราย: &gt; 400 mg/dL</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 bg-blue-500 rounded"></div>
+                          <span>ต่ำ: 60-69 mg/dL</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 bg-purple-500 rounded"></div>
+                          <span>ต่ำมาก: &lt; 60 mg/dL</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* After Meal */}
+                    <div>
+                      <h5 className="font-semibold text-gray-700 mb-2">หลังอาหาร 2 ชั่วโมง</h5>
+                      <div className="grid md:grid-cols-2 gap-2 text-sm">
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 bg-green-500 rounded"></div>
+                          <span>ปกติ: &lt; 140 mg/dL</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 bg-yellow-500 rounded"></div>
+                          <span>เริ่มสูง: 140-199 mg/dL</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 bg-orange-500 rounded"></div>
+                          <span>สูง: 200-300 mg/dL</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 bg-red-500 rounded"></div>
+                          <span>สูงมาก: &gt; 300 mg/dL</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Charts */}
             <div className="grid lg:grid-cols-2 gap-4 sm:gap-8">
               <div className="card">
@@ -1147,7 +1749,7 @@ export default function DashboardPage() {
                     .slice(-7)
                     .map(record => ({
                     date: new Date(record.recordedAt).toLocaleDateString('th-TH', { month: 'short', day: 'numeric' }),
-                      value: record.value === 'high' ? 1000 : record.value === 'low' ? 0 : record.value,
+                      value: record.value === 'high' ? 650 : record.value === 'low' ? 15 : record.value,
                     timeOfDay: record.timeOfDay
                   }))
                   
@@ -1177,7 +1779,7 @@ export default function DashboardPage() {
                     .slice(-7)
                     .map(record => ({
                       date: new Date(record.recordedAt).toLocaleDateString('th-TH', { month: 'short', day: 'numeric' }),
-                      value: record.value === 'high' ? 1000 : record.value === 'low' ? 0 : record.value
+                      value: record.value === 'high' ? 650 : record.value === 'low' ? 15 : record.value
                     }))
 
                   return sugarAfterData.length > 0 ? (
@@ -1262,13 +1864,17 @@ export default function DashboardPage() {
                         <span className="text-emerald-700 font-medium">ค่าเฉลี่ย</span>
                         <span className="text-emerald-900 font-bold">
                           {(() => {
-                            const numericRecords = bloodSugarRecords.filter(record => 
-                              typeof record.value === 'number'
-                            )
-                            if (numericRecords.length === 0) return 'ไม่มีข้อมูลตัวเลข'
+                            // แปลงค่า high/low เป็นตัวเลขสำหรับการคำนวณ
+                            const convertedValues = bloodSugarRecords.map(record => {
+                              if (record.value === 'high') return 650
+                              if (record.value === 'low') return 15
+                              return typeof record.value === 'number' ? record.value : 0
+                            }).filter(val => val > 0)
                             
-                            const avg = numericRecords.reduce((sum, record) => sum + (record.value as number), 0) / numericRecords.length
-                            return numericRecords[0].unit === 'mg/dL' 
+                            if (convertedValues.length === 0) return 'ไม่มีข้อมูลตัวเลข'
+                            
+                            const avg = convertedValues.reduce((sum, val) => sum + val, 0) / convertedValues.length
+                            return bloodSugarRecords[0].unit === 'mg/dL' 
                               ? Math.round(avg)
                               : avg.toFixed(1)
                           })()} {bloodSugarRecords[0]?.unit || 'mg/dL'}
@@ -1278,13 +1884,17 @@ export default function DashboardPage() {
                         <span className="text-yellow-700 font-medium">ค่าสูงสุด</span>
                         <span className="text-yellow-900 font-bold">
                           {(() => {
-                            const numericRecords = bloodSugarRecords.filter(record => 
-                              typeof record.value === 'number'
-                            )
-                            if (numericRecords.length === 0) return 'ไม่มีข้อมูลตัวเลข'
+                            // แปลงค่า high/low เป็นตัวเลขสำหรับการคำนวณ
+                            const convertedValues = bloodSugarRecords.map(record => {
+                              if (record.value === 'high') return 650
+                              if (record.value === 'low') return 15
+                              return typeof record.value === 'number' ? record.value : 0
+                            }).filter(val => val > 0)
                             
-                            const max = Math.max(...numericRecords.map(r => r.value as number))
-                            return numericRecords[0].unit === 'mg/dL' 
+                            if (convertedValues.length === 0) return 'ไม่มีข้อมูลตัวเลข'
+                            
+                            const max = Math.max(...convertedValues)
+                            return bloodSugarRecords[0].unit === 'mg/dL' 
                               ? Math.round(max)
                               : max.toFixed(1)
                           })()} {bloodSugarRecords[0]?.unit || 'mg/dL'}
@@ -1294,17 +1904,26 @@ export default function DashboardPage() {
                         <span className="text-pink-700 font-medium">ค่าต่ำสุด</span>
                         <span className="text-pink-900 font-bold">
                           {(() => {
-                            const numericRecords = bloodSugarRecords.filter(record => 
-                              typeof record.value === 'number'
-                            )
-                            if (numericRecords.length === 0) return 'ไม่มีข้อมูลตัวเลข'
+                            // แปลงค่า high/low เป็นตัวเลขสำหรับการคำนวณ
+                            const convertedValues = bloodSugarRecords.map(record => {
+                              if (record.value === 'high') return 650
+                              if (record.value === 'low') return 15
+                              return typeof record.value === 'number' ? record.value : 0
+                            }).filter(val => val > 0)
                             
-                            const min = Math.min(...numericRecords.map(r => r.value as number))
-                            return numericRecords[0].unit === 'mg/dL' 
+                            if (convertedValues.length === 0) return 'ไม่มีข้อมูลตัวเลข'
+                            
+                            const min = Math.min(...convertedValues)
+                            return bloodSugarRecords[0].unit === 'mg/dL' 
                               ? Math.round(min)
                               : min.toFixed(1)
                           })()} {bloodSugarRecords[0]?.unit || 'mg/dL'}
                         </span>
+                      </div>
+                      <div className="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                        <p className="text-sm text-blue-700">
+                          <strong>หมายเหตุ:</strong> ค่า High = 650 mg/dL, ค่า Low = 15 mg/dL (ค่าที่กำหนดไว้สำหรับการคำนวณสถิติ)
+                        </p>
                       </div>
                     </>
                   )}
@@ -1318,23 +1937,62 @@ export default function DashboardPage() {
                 <h3 className="text-lg font-semibold mb-4">ข้อมูลล่าสุด - ความดันโลหิต</h3>
                 <div className="space-y-3">
                   {bloodPressureRecords.length > 0 ? (
-                    <div className="p-3 bg-red-50 rounded-lg">
-                      <p className="text-sm text-red-600 font-medium">ความดันโลหิตล่าสุด</p>
-                      <p className="text-lg font-bold text-red-800">
-                        {bloodPressureRecords[0].systolic}/{bloodPressureRecords[0].diastolic} mmHg
-                      </p>
-                      <p className="text-xs text-red-600">
-                        {(() => {
-                          const timeLabels = {
-                            morning: 'เช้า',
-                            afternoon: 'กลางวัน',
-                            evening: 'เย็น',
-                            before_bed: 'ก่อนนอน'
-                          }
-                          return timeLabels[bloodPressureRecords[0].timeOfDay as keyof typeof timeLabels] || bloodPressureRecords[0].timeOfDay
-                        })()} - {new Date(bloodPressureRecords[0].recordedAt).toLocaleDateString('th-TH')}
-                      </p>
-                    </div>
+                    (() => {
+                      const latestBP = bloodPressureRecords[0]
+                      const bpLevel = getBloodPressureLevel(latestBP.systolic, latestBP.diastolic)
+                      const colorClasses = {
+                        green: 'bg-green-50 border-green-200',
+                        yellow: 'bg-yellow-50 border-yellow-200',
+                        orange: 'bg-orange-50 border-orange-200',
+                        red: 'bg-red-50 border-red-200',
+                        blue: 'bg-blue-50 border-blue-200',
+                        purple: 'bg-purple-50 border-purple-200'
+                      }
+                      const textColorClasses = {
+                        green: 'text-green-800',
+                        yellow: 'text-yellow-800',
+                        orange: 'text-orange-800',
+                        red: 'text-red-800',
+                        blue: 'text-blue-800',
+                        purple: 'text-purple-800'
+                      }
+                      return (
+                        <div className={`p-3 rounded-lg border ${colorClasses[bpLevel.color as keyof typeof colorClasses]}`}>
+                          <div className="flex items-center gap-2 mb-2">
+                            <p className={`text-sm font-medium ${textColorClasses[bpLevel.color as keyof typeof textColorClasses]}`}>
+                              ความดันโลหิตล่าสุด
+                            </p>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              bpLevel.color === 'green' ? 'bg-green-100 text-green-800' :
+                              bpLevel.color === 'yellow' ? 'bg-yellow-100 text-yellow-800' :
+                              bpLevel.color === 'orange' ? 'bg-orange-100 text-orange-800' :
+                              bpLevel.color === 'red' ? 'bg-red-100 text-red-800' :
+                              bpLevel.color === 'blue' ? 'bg-blue-100 text-blue-800' :
+                              'bg-purple-100 text-purple-800'
+                            }`}>
+                              {bpLevel.text}
+                            </span>
+                          </div>
+                          <p className={`text-lg font-bold ${textColorClasses[bpLevel.color as keyof typeof textColorClasses]}`}>
+                            {latestBP.systolic}/{latestBP.diastolic} mmHg
+                          </p>
+                          <p className="text-xs text-gray-600">
+                            {(() => {
+                              const timeLabels = {
+                                morning: 'เช้า',
+                                afternoon: 'กลางวัน',
+                                evening: 'เย็น',
+                                before_bed: 'ก่อนนอน'
+                              }
+                              return timeLabels[latestBP.timeOfDay as keyof typeof timeLabels] || latestBP.timeOfDay
+                            })()} - {new Date(latestBP.recordedAt).toLocaleDateString('th-TH')}
+                          </p>
+                          {bpLevel.warning && (
+                            <p className="text-xs text-red-600 mt-2 font-medium">{bpLevel.warning}</p>
+                          )}
+                        </div>
+                      )
+                    })()
                   ) : (
                     <p className="text-gray-500 text-center py-4">ยังไม่มีข้อมูล</p>
                   )}
@@ -1345,26 +2003,70 @@ export default function DashboardPage() {
                 <h3 className="text-lg font-semibold mb-4">ข้อมูลล่าสุด - น้ำตาลในเลือด</h3>
                 <div className="space-y-3">
                   {bloodSugarRecords.length > 0 ? (
-                    <div className="p-3 bg-green-50 rounded-lg">
-                      <p className="text-sm text-green-600 font-medium">น้ำตาลในเลือดล่าสุด</p>
-                      <p className="text-lg font-bold text-green-800">
-                        {bloodSugarRecords[0].value === 'high' ? 'High (สูงมาก)' : 
-                         bloodSugarRecords[0].value === 'low' ? 'Low (ต่ำมาก)' : 
-                         `${bloodSugarRecords[0].value} ${bloodSugarRecords[0].unit}`}
-                      </p>
-                      <p className="text-xs text-green-600">
-                        {(() => {
-                          const timeLabels = {
-                            before_breakfast: 'ก่อนอาหารเช้า',
-                            before_lunch: 'ก่อนอาหารกลางวัน',
-                            before_dinner: 'ก่อนอาหารเย็น',
-                            after_meal_2h: 'หลังอาหาร 2 ชม.',
-                            before_bed: 'ก่อนนอน'
-                          }
-                          return timeLabels[bloodSugarRecords[0].timeOfDay as keyof typeof timeLabels] || bloodSugarRecords[0].timeOfDay
-                        })()} - {new Date(bloodSugarRecords[0].recordedAt).toLocaleDateString('th-TH')}
-                      </p>
-                    </div>
+                    (() => {
+                      const latestBS = bloodSugarRecords[0]
+                      const bsLevel = latestBS.timeOfDay === 'after_meal_2h' 
+                        ? getBloodSugarLevelPostMeal(latestBS.value)
+                        : getBloodSugarLevel(latestBS.value)
+                      const colorClasses = {
+                        green: 'bg-green-50 border-green-200',
+                        yellow: 'bg-yellow-50 border-yellow-200',
+                        orange: 'bg-orange-50 border-orange-200',
+                        red: 'bg-red-50 border-red-200',
+                        blue: 'bg-blue-50 border-blue-200',
+                        purple: 'bg-purple-50 border-purple-200',
+                        gray: 'bg-gray-50 border-gray-200'
+                      }
+                      const textColorClasses = {
+                        green: 'text-green-800',
+                        yellow: 'text-yellow-800',
+                        orange: 'text-orange-800',
+                        red: 'text-red-800',
+                        blue: 'text-blue-800',
+                        purple: 'text-purple-800',
+                        gray: 'text-gray-800'
+                      }
+                      return (
+                        <div className={`p-3 rounded-lg border ${colorClasses[bsLevel.color as keyof typeof colorClasses]}`}>
+                          <div className="flex items-center gap-2 mb-2">
+                            <p className={`text-sm font-medium ${textColorClasses[bsLevel.color as keyof typeof textColorClasses]}`}>
+                              น้ำตาลในเลือดล่าสุด
+                            </p>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              bsLevel.color === 'green' ? 'bg-green-100 text-green-800' :
+                              bsLevel.color === 'yellow' ? 'bg-yellow-100 text-yellow-800' :
+                              bsLevel.color === 'orange' ? (bsLevel.level === 'very-high-dark' ? 'bg-orange-200 text-orange-900' : 'bg-orange-100 text-orange-800') :
+                              bsLevel.color === 'red' ? 'bg-red-100 text-red-800' :
+                              bsLevel.color === 'blue' ? 'bg-blue-100 text-blue-800' :
+                              bsLevel.color === 'purple' ? 'bg-purple-100 text-purple-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {bsLevel.text}
+                            </span>
+                          </div>
+                          <p className={`text-lg font-bold ${textColorClasses[bsLevel.color as keyof typeof textColorClasses]}`}>
+                            {latestBS.value === 'high' ? 'High (สูงมาก)' : 
+                             latestBS.value === 'low' ? 'Low (ต่ำมาก)' : 
+                             `${latestBS.value} ${latestBS.unit}`}
+                          </p>
+                          <p className="text-xs text-gray-600">
+                            {(() => {
+                              const timeLabels = {
+                                before_breakfast: 'ก่อนอาหารเช้า',
+                                before_lunch: 'ก่อนอาหารกลางวัน',
+                                before_dinner: 'ก่อนอาหารเย็น',
+                                after_meal_2h: 'หลังอาหาร 2 ชม.',
+                                before_bed: 'ก่อนนอน'
+                              }
+                              return timeLabels[latestBS.timeOfDay as keyof typeof timeLabels] || latestBS.timeOfDay
+                            })()} - {new Date(latestBS.recordedAt).toLocaleDateString('th-TH')}
+                          </p>
+                          {bsLevel.warning && (
+                            <p className="text-xs text-red-600 mt-2 font-medium">{bsLevel.warning}</p>
+                          )}
+                        </div>
+                      )
+                    })()
                   ) : (
                     <p className="text-gray-500 text-center py-4">ยังไม่มีข้อมูล</p>
                   )}
@@ -1394,16 +2096,149 @@ export default function DashboardPage() {
                       </>
                     )}
                   </button>
+                  {lastSentTime && (
+                    <div className="text-sm text-gray-600 mt-2">
+                      <p>ส่งข้อมูลล่าสุด: {new Date(lastSentTime).toLocaleString('th-TH')}</p>
+                      {(() => {
+                        const now = Date.now()
+                        const COOLDOWN_PERIOD = 5 * 60 * 1000
+                        const remainingTime = Math.ceil((COOLDOWN_PERIOD - (now - lastSentTime)) / 1000 / 60)
+                        if (remainingTime > 0) {
+                          return <p className="text-orange-600">สามารถส่งใหม่ได้ในอีก {remainingTime} นาที</p>
+                        }
+                        return <p className="text-green-600">สามารถส่งข้อมูลใหม่ได้แล้ว</p>
+                      })()}
+                    </div>
+                  )}
                   <button
                     onClick={generateWeeklyPdf}
                     className="btn-secondary"
                   >
-                    ดาวน์โหลดรายสัปดาห์ (PDF)
+                    {isLineBrowser 
+                      ? 'ดาวน์โหลดรายสัปดาห์ (HTML)' 
+                      : 'ดาวน์โหลดรายสัปดาห์ (PDF)'
+                    }
+                  </button>
+                  <button
+                    onClick={() => {
+                      console.log('Force HTML mode')
+                      generatePdfForLineBrowser()
+                    }}
+                    className="btn-secondary bg-green-600 hover:bg-green-700 text-white"
+                    style={{ marginLeft: '8px' }}
+                  >
+                    ดาวน์โหลดรายสัปดาห์ (HTML)
+                  </button>
+                  <button
+                    onClick={() => {
+                      // วิธีสำรอง: แสดงข้อมูลในหน้าเดิม
+                      const timeMap: Record<string, string> = {
+                        morning: 'เช้า',
+                        afternoon: 'กลางวัน',
+                        evening: 'เย็น',
+                        before_bed: 'ก่อนนอน',
+                        before_breakfast: 'ก่อนอาหารเช้า',
+                        before_lunch: 'ก่อนอาหารกลางวัน',
+                        before_dinner: 'ก่อนอาหารเย็น',
+                        after_meal_2h: 'หลังอาหาร 2 ชม.'
+                      }
+
+                      const bpRows = bloodPressureRecords
+                        .slice(0, 7)
+                        .sort((a, b) => new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime())
+                        .map(r => ({
+                          date: new Date(r.recordedAt).toLocaleDateString('th-TH'),
+                          time: timeMap[r.timeOfDay] || r.timeOfDay,
+                          systolic: r.systolic,
+                          diastolic: r.diastolic,
+                          pulse: r.pulse || '-'
+                        }))
+
+                      const sugarRows = bloodSugarRecords
+                        .slice(0, 7)
+                        .sort((a, b) => new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime())
+                        .map(r => ({
+                          date: new Date(r.recordedAt).toLocaleDateString('th-TH'),
+                          time: timeMap[r.timeOfDay] || r.timeOfDay,
+                          value: r.value === 'high' ? 'สูงมาก' : r.value === 'low' ? 'ต่ำมาก' : String(r.value)
+                        }))
+
+                      const reportText = `
+รายงานข้อมูลสุขภาพ 7 วันล่าสุด
+พระคุณเจ้า ${user?.firstName} ${user?.lastName} ${user?.hnNumber ? `(HN: ${user.hnNumber})` : ''}
+วันที่สร้างรายงาน: ${new Date().toLocaleDateString('th-TH')}
+
+ความดันโลหิต:
+${bpRows.map(row => `${row.date} ${row.time}: ${row.systolic}/${row.diastolic} mmHg (Pulse: ${row.pulse})`).join('\n')}
+
+น้ำตาลในเลือด:
+${sugarRows.map(row => `${row.date} ${row.time}: ${row.value}`).join('\n')}
+
+รายงานนี้ถูกสร้างจากระบบบันทึกข้อมูลสุขภาพดิจิตอล - โรงพยาบาลสงฆ์
+                      `
+
+                      // แสดงใน modal หรือ alert
+                      const modal = document.createElement('div')
+                      modal.style.cssText = `
+                        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                        background: rgba(0,0,0,0.8); z-index: 9999; display: flex;
+                        align-items: center; justify-content: center; padding: 20px;
+                      `
+                      modal.innerHTML = `
+                        <div style="background: white; padding: 20px; border-radius: 8px; max-width: 90%; max-height: 90%; overflow: auto;">
+                          <h3 style="margin-top: 0; color: #f97316;">รายงานข้อมูลสุขภาพ</h3>
+                          <pre style="white-space: pre-wrap; font-family: monospace; font-size: 12px; line-height: 1.4;">${reportText}</pre>
+                          <div style="margin-top: 15px; text-align: center;">
+                            <button onclick="this.closest('div').parentElement.remove()" style="padding: 8px 16px; background: #f97316; color: white; border: none; border-radius: 4px; cursor: pointer;">ปิด</button>
+                            <button onclick="navigator.clipboard.writeText(\`${reportText}\`); alert('คัดลอกแล้ว!');" style="padding: 8px 16px; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer; margin-left: 10px;">คัดลอก</button>
+                          </div>
+                        </div>
+                      `
+                      document.body.appendChild(modal)
+                    }}
+                    className="btn-secondary bg-orange-600 hover:bg-orange-700 text-white"
+                    style={{ marginLeft: '8px' }}
+                  >
+                    ดูรายงาน (LINE)
+                  </button>
+                  <button
+                    onClick={async () => {
+                      try {
+                        const response = await fetch('/api/cleanup', { method: 'POST' })
+                        const result = await response.json()
+                        if (result.success) {
+                          toast.success('ทำความสะอาดข้อมูลสำเร็จ!')
+                        } else {
+                          toast.error('ทำความสะอาดข้อมูลล้มเหลว')
+                        }
+                      } catch (error) {
+                        toast.error('เกิดข้อผิดพลาดในการทำความสะอาดข้อมูล')
+                      }
+                    }}
+                    className="btn-secondary bg-purple-600 hover:bg-purple-700 text-white"
+                    style={{ marginLeft: '8px' }}
+                  >
+                    ทำความสะอาดข้อมูล
                   </button>
                 </div>
                 <div className="mt-3 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                   <p className="text-sm text-yellow-700 italic">
                     ส่งข้อมูลทาง email ให้ทางคลินิก ผู้ป่วยต้องโทรหรือติดต่อ line เพื่อสอบถามให้ติดตามข้อมูลต่อ ทางคลินิกจะไม่ได้เปิดดู email โดยอัตโนมัติ
+                  </p>
+                </div>
+                {isLineBrowser && (
+                  <div className="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <p className="text-sm text-blue-700">
+                      <strong>สำหรับ LINE Browser:</strong> LINE ไม่รองรับการดาวน์โหลดไฟล์โดยตรง
+                      กรุณาเปิดหน้านี้ด้วยเบราว์เซอร์อื่น เช่น Chrome หรือ Safari เพื่อดาวน์โหลดไฟล์ได้ตามปกติ
+                      หากต้องการใช้งานทันที ให้กดปุ่มด้านบนเพื่อสร้างไฟล์ HTML แล้วเปิดด้วยเบราว์เซอร์อื่นเพื่อพิมพ์เป็น PDF
+                    </p>
+                  </div>
+                )}
+                <div className="mt-3 bg-purple-50 border border-purple-200 rounded-lg p-3">
+                  <p className="text-sm text-purple-700">
+                    <strong>การทำความสะอาดข้อมูล:</strong> ลบข้อมูลเก่าเกิน 1 เดือน, ลบประวัติส่งอีเมลเก่า 7 วัน, 
+                    ลบข้อมูลซ้ำซ้อน, และเคลียร์หมายเหตุว่างเปล่า เพื่อประหยัดเนื้อที่และทำให้ระบบเร็วขึ้น
                   </p>
                 </div>
                 {!user?.consent && (

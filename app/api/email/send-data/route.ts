@@ -3,6 +3,9 @@ import { verifyToken } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { sendDataToClinic } from '@/lib/email'
 
+// เก็บข้อมูลการส่งล่าสุดใน memory (สำหรับ production ควรใช้ Redis)
+const lastSentTimes = new Map<string, number>()
+
 export async function POST(request: NextRequest) {
   try {
     console.log('Send email API called')
@@ -27,6 +30,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'คุณยังไม่ได้ยินยอมการแชร์ข้อมูล' },
         { status: 400 }
+      )
+    }
+
+    // ตรวจสอบการส่งซ้ำ - ห้ามส่งซ้ำภายใน 5 นาที
+    const now = Date.now()
+    const COOLDOWN_PERIOD = 5 * 60 * 1000 // 5 นาที
+    const lastSent = lastSentTimes.get(user.id)
+    
+    if (lastSent && (now - lastSent) < COOLDOWN_PERIOD) {
+      const remainingTime = Math.ceil((COOLDOWN_PERIOD - (now - lastSent)) / 1000 / 60)
+      console.log(`User ${user.phone} tried to send too soon, remaining: ${remainingTime} minutes`)
+      return NextResponse.json(
+        { 
+          error: `กรุณารอ ${remainingTime} นาที ก่อนส่งข้อมูลใหม่`,
+          cooldownRemaining: remainingTime
+        },
+        { status: 429 } // Too Many Requests
       )
     }
 
@@ -100,6 +120,9 @@ export async function POST(request: NextRequest) {
     }
 
     if (emailResult.success) {
+      // บันทึกเวลาที่ส่งสำเร็จ
+      lastSentTimes.set(user.id, now)
+      
       return NextResponse.json({
         success: true,
         message: 'ส่งข้อมูลให้คลินิกสำเร็จ'

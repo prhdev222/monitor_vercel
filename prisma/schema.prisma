@@ -12,13 +12,14 @@ datasource db {
 
 model User {
   id        String   @id @default(cuid())
-  phone     String   @unique
+  phone     String?  @unique
   firstName String?  // ชื่อ
   lastName  String?  // นามสกุล
   hnNumber  String?  // เลขที่ HN (Hospital Number)
   temple    String?  // วัด
   email     String?
-  password  String
+  password  String?
+  lineId    String?  @unique // LINE User ID
   consent   Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

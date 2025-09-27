@@ -1,8 +1,10 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { runDataCleanup } from '@/lib/data-cleanup'
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
+    console.log('Cleanup API called')
+    
     const result = await runDataCleanup()
     
     if (result.success) {
@@ -11,17 +13,17 @@ export async function POST() {
         message: result.message
       })
     } else {
-      return NextResponse.json(
-        { error: result.message },
-        { status: 500 }
-      )
+      return NextResponse.json({
+        success: false,
+        error: result.message
+      }, { status: 500 })
     }
-
+    
   } catch (error) {
     console.error('Cleanup API error:', error)
-    return NextResponse.json(
-      { error: 'เกิดข้อผิดพลาดในการทำความสะอาดข้อมูล' },
-      { status: 500 }
-    )
+    return NextResponse.json({
+      success: false,
+      error: 'เกิดข้อผิดพลาดในการทำความสะอาดข้อมูล'
+    }, { status: 500 })
   }
 }

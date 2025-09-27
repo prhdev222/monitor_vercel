@@ -66,9 +66,27 @@ export async function createUser(phone: string, password: string, firstName?: st
   })
 }
 
+export async function createUserWithLine(lineId: string, firstName?: string, lastName?: string, email?: string) {
+  return prisma.user.create({
+    data: {
+      lineId,
+      firstName,
+      lastName,
+      email,
+      consent: false
+    }
+  })
+}
+
 export async function findUserByPhone(phone: string) {
   return prisma.user.findUnique({
     where: { phone }
+  })
+}
+
+export async function findUserByLineId(lineId: string) {
+  return prisma.user.findUnique({
+    where: { lineId }
   })
 }
 

@@ -2,10 +2,11 @@ import { prisma } from './prisma'
 import { sendDataToClinic } from './email'
 
 export async function cleanupOldData() {
-  const threeMonthsAgo = new Date()
-  threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3)
+  // ลดเวลาเก็บข้อมูลจาก 3 เดือน เป็น 1 เดือน
+  const oneMonthAgo = new Date()
+  oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
 
-  console.log(`Starting data cleanup for records older than ${threeMonthsAgo.toISOString()}`)
+  console.log(`Starting data cleanup for records older than ${oneMonthAgo.toISOString()}`)
 
   // Get all users with old data
   const usersWithOldData = await prisma.user.findMany({
@@ -15,7 +16,7 @@ export async function cleanupOldData() {
           bloodPressureRecords: {
             some: {
               recordedAt: {
-                lt: threeMonthsAgo
+                lt: oneMonthAgo
               }
             }
           }
@@ -24,7 +25,7 @@ export async function cleanupOldData() {
           bloodSugarRecords: {
             some: {
               recordedAt: {
-                lt: threeMonthsAgo
+                lt: oneMonthAgo
               }
             }
           }
@@ -35,14 +36,14 @@ export async function cleanupOldData() {
       bloodPressureRecords: {
         where: {
           recordedAt: {
-            lt: threeMonthsAgo
+            lt: oneMonthAgo
           }
         }
       },
       bloodSugarRecords: {
         where: {
           recordedAt: {
-            lt: threeMonthsAgo
+            lt: oneMonthAgo
           }
         }
       }
@@ -99,7 +100,7 @@ export async function cleanupOldData() {
         where: {
           userId: user.id,
           recordedAt: {
-            lt: threeMonthsAgo
+            lt: oneMonthAgo
           }
         }
       })
@@ -109,7 +110,7 @@ export async function cleanupOldData() {
         where: {
           userId: user.id,
           recordedAt: {
-            lt: threeMonthsAgo
+            lt: oneMonthAgo
           }
         }
       })
@@ -124,11 +125,88 @@ export async function cleanupOldData() {
   console.log('Data cleanup completed')
 }
 
+// ฟังก์ชันลบข้อมูลเก่าที่ไม่จำเป็น
+export async function cleanupUnnecessaryData() {
+  try {
+    // ลบ email logs เก่า (เก็บแค่ 7 วัน)
+    const weekAgo = new Date()
+    weekAgo.setDate(weekAgo.getDate() - 7)
+    
+    const deletedLogs = await prisma.emailLog.deleteMany({
+      where: {
+        sentAt: {
+          lt: weekAgo
+        }
+      }
+    })
+    
+    console.log(`Deleted ${deletedLogs.count} old email logs`)
+    
+    // ลบข้อมูลซ้ำ (ถ้ามี)
+    const duplicateBP = await prisma.$queryRaw`
+      DELETE FROM "BloodPressureRecord" 
+      WHERE id NOT IN (
+        SELECT MIN(id) 
+        FROM "BloodPressureRecord" 
+        GROUP BY "userId", "systolic", "diastolic", "recordedAt"
+      )
+    `
+    
+    const duplicateBS = await prisma.$queryRaw`
+      DELETE FROM "BloodSugarRecord" 
+      WHERE id NOT IN (
+        SELECT MIN(id) 
+        FROM "BloodSugarRecord" 
+        GROUP BY "userId", "value", "recordedAt"
+      )
+    `
+    
+    console.log('Removed duplicate records')
+    
+    return { success: true, message: 'Unnecessary data cleanup completed' }
+  } catch (error) {
+    console.error('Unnecessary data cleanup failed:', error)
+    return { success: false, message: 'Cleanup failed', error: error instanceof Error ? error.message : 'Unknown error' }
+  }
+}
+
+// ฟังก์ชันบีบอัดข้อมูล
+export async function compressData() {
+  try {
+    // ลบ notes ที่ว่างเปล่า
+    await prisma.bloodPressureRecord.updateMany({
+      where: {
+        notes: ''
+      },
+      data: {
+        notes: null
+      }
+    })
+    
+    await prisma.bloodSugarRecord.updateMany({
+      where: {
+        notes: ''
+      },
+      data: {
+        notes: null
+      }
+    })
+    
+    console.log('Compressed data by removing empty notes')
+    return { success: true, message: 'Data compression completed' }
+  } catch (error) {
+    console.error('Data compression failed:', error)
+    return { success: false, message: 'Compression failed', error: error instanceof Error ? error.message : 'Unknown error' }
+  }
+}
+
 // Function to run cleanup (can be called from API or cron job)
 export async function runDataCleanup() {
   try {
     await cleanupOldData()
-    return { success: true, message: 'Data cleanup completed successfully' }
+    await cleanupUnnecessaryData()
+    await compressData()
+    return { success: true, message: 'Complete data cleanup completed successfully' }
   } catch (error) {
     console.error('Data cleanup failed:', error)
     return { 
