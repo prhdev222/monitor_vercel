@@ -143,10 +143,19 @@ export default function LoginPage() {
             <LineLoginButton />
           </div>
 
-          <div className="text-center">
-            <Link href="/" className="text-sm text-primary-600 hover:text-primary-500">
+          <div className="text-center space-y-2">
+            <Link href="/" className="text-sm text-primary-600 hover:text-primary-500 block">
               ← กลับหน้าหลัก
             </Link>
+            <div className="flex justify-center space-x-4 text-xs text-gray-500">
+              <Link href="/privacy" className="hover:text-gray-700">
+                นโยบายความเป็นส่วนตัว
+              </Link>
+              <span>•</span>
+              <Link href="/terms" className="hover:text-gray-700">
+                ข้อกำหนดการใช้งาน
+              </Link>
+            </div>
           </div>
         </form>
       </div>
