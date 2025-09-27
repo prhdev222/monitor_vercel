@@ -8,9 +8,11 @@ import { lineService } from '@/lib/line'
 interface LineLoginButtonProps {
   className?: string
   children?: React.ReactNode
+  onLineLogin?: (profile: any) => void
+  disabled?: boolean
 }
 
-export default function LineLoginButton({ className = '', children }: LineLoginButtonProps) {
+export default function LineLoginButton({ className = '', children, onLineLogin, disabled = false }: LineLoginButtonProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [isLiffReady, setIsLiffReady] = useState(false)
   const router = useRouter()
@@ -66,17 +68,9 @@ export default function LineLoginButton({ className = '', children }: LineLoginB
       // Check if LIFF is available
       const liffId = process.env.NEXT_PUBLIC_LIFF_ID
       if (!liffId) {
-        console.log('LIFF not available, using fallback login')
-        // Use fallback login with mock data
-        const mockProfile = {
-          userId: 'line_user_' + Date.now(),
-          displayName: 'LINE User',
-          pictureUrl: '',
-          email: ''
-        }
-        
-        console.log('Using mock profile:', mockProfile)
-        await processLineLogin(mockProfile)
+        console.log('LIFF not available, redirecting to fallback page')
+        // Redirect to fallback page for LINE login
+        router.push('/line-login-fallback')
         return
       }
       
@@ -94,7 +88,11 @@ export default function LineLoginButton({ className = '', children }: LineLoginB
         throw new Error('ไม่สามารถดึงข้อมูลโปรไฟล์ LINE ได้')
       }
 
-      await processLineLogin(profile)
+      if (onLineLogin) {
+        onLineLogin(profile)
+      } else {
+        await processLineLogin(profile)
+      }
     } catch (error) {
       console.error('LINE login error:', error)
       toast.error(error instanceof Error ? error.message : 'เกิดข้อผิดพลาดในการเข้าสู่ระบบด้วย LINE')
@@ -219,7 +217,7 @@ export default function LineLoginButton({ className = '', children }: LineLoginB
     <div className="flex flex-col gap-2">
       <button
         onClick={handleLineLogin}
-        disabled={isLoading || !isLiffReady}
+        disabled={isLoading || !isLiffReady || disabled}
         className={`
           flex items-center justify-center gap-3 w-full py-3 px-4 
           bg-[#00B900] hover:bg-[#009900] text-white font-medium rounded-lg

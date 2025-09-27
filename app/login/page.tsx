@@ -141,6 +141,9 @@ export default function LoginPage() {
 
           <div>
             <LineLoginButton />
+            <p className="text-xs text-gray-500 text-center mt-2">
+              หรือ <Link href="/register" className="text-primary-600 hover:text-primary-500">ลงทะเบียนใหม่</Link> แล้วเชื่อม LINE ภายหลัง
+            </p>
           </div>
 
           <div className="text-center space-y-2">

@@ -59,6 +59,7 @@ interface User {
   temple?: string
   email?: string
   consent: boolean
+  lineId?: string
 }
 
 interface BloodPressureRecord {
@@ -2358,6 +2359,23 @@ ${sugarRows.map(row => `${row.date} ${row.time}: ${row.value}`).join('\n')}
                   <p className="text-sm text-yellow-600">
                     คุณต้องยินยอมการแชร์ข้อมูลก่อนส่งให้คลินิก
                   </p>
+                )}
+                
+                {!(user as any)?.lineId && (
+                  <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                    <h4 className="font-medium text-blue-800 mb-2">
+                      เชื่อม LINE Account
+                    </h4>
+                    <p className="text-sm text-blue-700 mb-3">
+                      เชื่อม LINE เพื่อความสะดวกในการเข้าสู่ระบบครั้งต่อไป
+                    </p>
+                    <button
+                      onClick={() => router.push('/connect-line')}
+                      className="btn-primary text-sm py-2 px-4"
+                    >
+                      เชื่อม LINE Account
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
