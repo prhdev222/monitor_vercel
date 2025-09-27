@@ -24,7 +24,10 @@ export async function verifyPassword(password: string, hashedPassword: string): 
 }
 
 export function generateToken(user: User): string {
-  return jwt.sign(
+  console.log('Generating token for user:', user.id, user.phone)
+  console.log('JWT_SECRET exists:', !!JWT_SECRET)
+  
+  const token = jwt.sign(
     { 
       id: user.id, 
       phone: user.phone,
@@ -38,13 +41,21 @@ export function generateToken(user: User): string {
     JWT_SECRET,
     { expiresIn: '7d' }
   )
+  
+  console.log('Token generated successfully, length:', token.length)
+  return token
 }
 
 export function verifyToken(token: string): User | null {
   try {
+    console.log('Verifying token with secret:', JWT_SECRET ? 'Secret exists' : 'No secret')
+    console.log('Token to verify:', token.substring(0, 50) + '...')
     const decoded = jwt.verify(token, JWT_SECRET) as User
+    console.log('Token decoded successfully:', decoded)
     return decoded
   } catch (error) {
+    console.error('Token verification failed:', error)
+    console.error('Error details:', error instanceof Error ? error.message : 'Unknown error')
     return null
   }
 }

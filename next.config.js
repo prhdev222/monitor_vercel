@@ -1,9 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  env: {
-    NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
-    NEXTAUTH_URL: process.env.NEXTAUTH_URL,
-  },
+  // Remove env config that's causing build issues
+  experimental: {
+    serverComponentsExternalPackages: ['@prisma/client']
+  }
 }
 
 module.exports = nextConfig

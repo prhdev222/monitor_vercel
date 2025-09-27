@@ -88,6 +88,7 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSending, setIsSending] = useState(false)
   const [lastSentTime, setLastSentTime] = useState<number | null>(null)
+  const [showManualRedirect, setShowManualRedirect] = useState(false)
   const [editingRecord, setEditingRecord] = useState<{type: 'bp' | 'bs', id: string} | null>(null)
   const [showGuidelines, setShowGuidelines] = useState(false)
   const [isLineBrowser, setIsLineBrowser] = useState(false)
@@ -292,6 +293,13 @@ export default function DashboardPage() {
   })
 
   useEffect(() => {
+    // Check URL parameters for LINE login callback
+    const urlParams = new URLSearchParams(window.location.search)
+    const code = urlParams.get('code')
+    const state = urlParams.get('state')
+    
+    console.log('Dashboard loaded, URL params:', { code: !!code, state: !!state })
+    
     checkAuth()
     loadData()
     
@@ -313,20 +321,114 @@ export default function DashboardPage() {
         position: 'top-center'
       })
     }
+    
+    // Check if manual redirect button should be shown
+    const lineLoginSuccess = localStorage.getItem('line-login-success')
+    if (lineLoginSuccess === 'true') {
+      setShowManualRedirect(true)
+    }
   }, [])
 
   const checkAuth = async () => {
     try {
-      const response = await fetch('/api/auth/me')
+      console.log('Checking authentication...')
+      
+      // Check localStorage first for LINE login fallback
+      const lineLoginSuccess = localStorage.getItem('line-login-success')
+      const storedUser = localStorage.getItem('user')
+      
+      console.log('Checking localStorage:', { lineLoginSuccess, storedUser: !!storedUser })
+      
+      if (lineLoginSuccess === 'true' && storedUser) {
+        console.log('Found LINE login data in localStorage, using fallback authentication')
+        try {
+          const userData = JSON.parse(storedUser)
+          console.log('Parsed user data from localStorage:', userData)
+          setUser(userData)
+          
+          // Check if profile is complete
+          const isProfileComplete = userData.phone && userData.firstName && userData.lastName && 
+                                   userData.hnNumber && userData.temple && userData.consent
+          
+          if (!isProfileComplete) {
+            console.log('Profile incomplete, redirecting to profile page')
+            toast('กรุณากรอกข้อมูลให้ครบถ้วนก่อนใช้งาน', {
+              duration: 3000,
+              position: 'top-center'
+            })
+            // Clear the flag after using it
+            localStorage.removeItem('line-login-success')
+            setTimeout(() => {
+              router.push('/profile')
+            }, 1000)
+            return
+          }
+          
+          // Clear the flag after using it
+          localStorage.removeItem('line-login-success')
+          setIsLoading(false)
+          console.log('Successfully authenticated using localStorage fallback')
+          return
+        } catch (parseError) {
+          console.error('Error parsing stored user data:', parseError)
+        }
+      }
+      
+      const response = await fetch('/api/auth/me', {
+        credentials: 'include', // Ensure cookies are sent
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      })
+      console.log('Auth check response status:', response.status)
+      
       const result = await response.json()
+      console.log('Auth check result:', result)
       
       if (result.success) {
+        console.log('User authenticated:', result.user)
         setUser(result.user)
+        
+        // Check if profile is complete
+        const isProfileComplete = result.user.phone && result.user.firstName && result.user.lastName && 
+                                 result.user.hnNumber && result.user.temple && result.user.consent
+        
+        if (!isProfileComplete) {
+          console.log('Profile incomplete, redirecting to profile page')
+          toast('กรุณากรอกข้อมูลให้ครบถ้วนก่อนใช้งาน', {
+            duration: 3000,
+            position: 'top-center'
+          })
+          setTimeout(() => {
+            router.push('/profile')
+          }, 1000)
+          return
+        }
+      } else {
+        console.log('Authentication failed, redirecting to login')
+        // For LINE Browser, use window.location.href
+        const isLineBrowser = /Line/i.test(navigator.userAgent) || 
+                             /LineBrowser/i.test(navigator.userAgent) ||
+                             /LINE/i.test(navigator.userAgent)
+        
+        if (isLineBrowser) {
+          window.location.href = '/login'
+        } else {
+          router.push('/login')
+        }
+      }
+    } catch (error) {
+      console.error('Auth check error:', error)
+      // For LINE Browser, use window.location.href
+      const isLineBrowser = /Line/i.test(navigator.userAgent) || 
+                           /LineBrowser/i.test(navigator.userAgent) ||
+                           /LINE/i.test(navigator.userAgent)
+      
+      if (isLineBrowser) {
+        window.location.href = '/login'
       } else {
         router.push('/login')
       }
-    } catch (error) {
-      router.push('/login')
     } finally {
       setIsLoading(false)
     }
@@ -994,6 +1096,17 @@ export default function DashboardPage() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">กำลังโหลด...</p>
+          {showManualRedirect && (
+            <button
+              onClick={() => {
+                console.log('Manual redirect to dashboard from loading screen')
+                window.location.href = '/dashboard'
+              }}
+              className="mt-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            >
+              ไปยัง Dashboard
+            </button>
+          )}
         </div>
       </div>
     )
