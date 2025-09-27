@@ -22,6 +22,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { lineId, displayName, pictureUrl, email, accessToken } = await request.json()
+    console.log('Connect LINE API called with:', { lineId, displayName, hasAccessToken: !!accessToken })
 
     if (!lineId) {
       return NextResponse.json(
@@ -46,15 +47,25 @@ export async function POST(request: NextRequest) {
     }
 
     // Update user with LINE data
+    const updateData = {
+      lineId: lineId,
+      // Update firstName if it's empty and we have displayName
+      firstName: user.firstName || displayName || user.firstName,
+      // Update email if it's empty and we have email from LINE
+      email: user.email || email || user.email
+    }
+    
+    console.log('Updating user with LINE data:', updateData)
+    
     const updatedUser = await prisma.user.update({
       where: { id: user.id },
-      data: {
-        lineId: lineId,
-        // Update firstName if it's empty and we have displayName
-        firstName: user.firstName || displayName || user.firstName,
-        // Update email if it's empty and we have email from LINE
-        email: user.email || email || user.email
-      }
+      data: updateData
+    })
+    
+    console.log('User updated successfully:', {
+      id: updatedUser.id,
+      lineId: updatedUser.lineId,
+      firstName: updatedUser.firstName
     })
 
     // Generate new JWT token with updated data

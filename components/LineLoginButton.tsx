@@ -113,10 +113,12 @@ export default function LineLoginButton({ className = '', children, onLineLogin,
     try {
       // Send profile to backend
       console.log('Sending profile to backend:', {
-        lineId: profile.userId,
+        lineId: profile.userId, // This is LINE User ID
         displayName: profile.displayName,
-        hasEmail: !!profile.email
+        hasEmail: !!profile.email,
+        hasAccessToken: !!profile.accessToken
       })
+      console.log('Full profile data:', profile)
       
       const response = await fetch('/api/auth/line', {
         method: 'POST',
@@ -125,7 +127,7 @@ export default function LineLoginButton({ className = '', children, onLineLogin,
         },
         credentials: 'include', // Ensure cookies are sent and received
         body: JSON.stringify({
-          lineId: profile.userId,
+          lineId: profile.userId, // This is actually LINE User ID
           displayName: profile.displayName,
           pictureUrl: profile.pictureUrl,
           email: profile.email,

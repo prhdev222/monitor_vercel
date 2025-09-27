@@ -31,7 +31,13 @@ export async function POST(request: NextRequest) {
   try {
     console.log('LINE login API called')
     let { lineId, displayName, pictureUrl, email, accessToken } = await request.json()
-    console.log('Received data:', { lineId, displayName, hasAccessToken: !!accessToken })
+    console.log('Received data:', { 
+      lineId, 
+      displayName, 
+      hasAccessToken: !!accessToken,
+      email: email || 'No email',
+      pictureUrl: pictureUrl || 'No picture'
+    })
 
     if (!lineId) {
       return NextResponse.json(
@@ -75,15 +81,22 @@ export async function POST(request: NextRequest) {
         email: email || null
       })
       try {
+        const userData = {
+          lineId,
+          firstName: displayName || '',
+          email: email || null,
+          consent: false
+        }
+        console.log('Creating user with data:', userData)
+        
         user = await prisma.user.create({
-          data: {
-            lineId,
-            firstName: displayName || '',
-            email: email || null,
-            consent: false
-          }
+          data: userData
         })
-        console.log('New user created successfully:', user.id)
+        console.log('New user created successfully:', {
+          id: user.id,
+          lineId: user.lineId,
+          firstName: user.firstName
+        })
       } catch (createError) {
         console.error('Error creating user:', createError)
         return NextResponse.json(
@@ -141,6 +154,7 @@ export async function POST(request: NextRequest) {
     console.log('Response prepared:', {
       success: true,
       userId: user.id,
+      userLineId: user.lineId,
       isProfileComplete,
       redirectTo: isProfileComplete ? '/dashboard' : '/profile'
     })
