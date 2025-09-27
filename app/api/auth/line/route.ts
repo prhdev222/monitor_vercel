@@ -34,11 +34,11 @@ export async function POST(request: NextRequest) {
     const token = generateToken({
       id: user.id,
       phone: user.phone || '',
-      firstName: user.firstName,
-      lastName: user.lastName,
-      hnNumber: user.hnNumber,
-      temple: user.temple,
-      email: user.email,
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      hnNumber: user.hnNumber || '',
+      temple: user.temple || '',
+      email: user.email || '',
       consent: user.consent
     })
 
