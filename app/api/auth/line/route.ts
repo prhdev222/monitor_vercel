@@ -1,16 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { generateToken } from '@/lib/auth'
+import { Client } from '@line/bot-sdk'
+
+// Function to verify LINE access token and get profile
+async function verifyLineToken(accessToken: string) {
+  try {
+    const client = new Client({
+      channelAccessToken: process.env.LINE_CHANNEL_SECRET || '',
+      channelSecret: process.env.LINE_CHANNEL_SECRET || ''
+    })
+    
+    // Verify access token by getting profile
+    const profile = await client.getProfile(accessToken)
+    return profile
+  } catch (error) {
+    console.error('LINE token verification failed:', error)
+    return null
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
-    const { lineId, displayName, pictureUrl, email } = await request.json()
+    const { lineId, displayName, pictureUrl, email, accessToken } = await request.json()
 
     if (!lineId) {
       return NextResponse.json(
         { success: false, error: 'LINE ID is required' },
         { status: 400 }
       )
+    }
+
+    // If accessToken is provided, verify it
+    if (accessToken) {
+      const verifiedProfile = await verifyLineToken(accessToken)
+      if (!verifiedProfile) {
+        return NextResponse.json(
+          { success: false, error: 'Invalid LINE access token' },
+          { status: 401 }
+        )
+      }
+      console.log('LINE token verified for user:', verifiedProfile.userId)
     }
 
     // Check if user already exists

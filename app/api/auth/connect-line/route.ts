@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { lineId, displayName, pictureUrl, email } = await request.json()
+    const { lineId, displayName, pictureUrl, email, accessToken } = await request.json()
 
     if (!lineId) {
       return NextResponse.json(

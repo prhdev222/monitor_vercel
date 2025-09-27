@@ -82,16 +82,24 @@ export default function LineLoginButton({ className = '', children, onLineLogin,
 
       console.log('User is logged in to LINE, getting profile')
       const profile = await lineService.getProfile()
+      const accessToken = await lineService.getAccessToken()
       console.log('LINE profile:', profile)
+      console.log('LINE access token:', accessToken ? 'Available' : 'Not available')
       
       if (!profile) {
         throw new Error('ไม่สามารถดึงข้อมูลโปรไฟล์ LINE ได้')
       }
 
+      // Add access token to profile
+      const profileWithToken = {
+        ...profile,
+        accessToken: accessToken
+      }
+
       if (onLineLogin) {
-        onLineLogin(profile)
+        onLineLogin(profileWithToken)
       } else {
-        await processLineLogin(profile)
+        await processLineLogin(profileWithToken)
       }
     } catch (error) {
       console.error('LINE login error:', error)
@@ -120,7 +128,8 @@ export default function LineLoginButton({ className = '', children, onLineLogin,
           lineId: profile.userId,
           displayName: profile.displayName,
           pictureUrl: profile.pictureUrl,
-          email: profile.email
+          email: profile.email,
+          accessToken: profile.accessToken
         })
       })
 
