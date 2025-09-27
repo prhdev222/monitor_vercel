@@ -22,6 +22,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify password
+    if (!user.password) {
+      return NextResponse.json(
+        { error: 'รหัสผ่านไม่ถูกต้อง' },
+        { status: 401 }
+      )
+    }
+    
     const isValidPassword = await verifyPassword(password, user.password)
     if (!isValidPassword) {
       return NextResponse.json(
