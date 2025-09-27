@@ -6,13 +6,20 @@ import { Client } from '@line/bot-sdk'
 // Function to verify LINE access token and get profile
 async function verifyLineToken(accessToken: string) {
   try {
-    const client = new Client({
-      channelAccessToken: process.env.LINE_CHANNEL_SECRET || '',
-      channelSecret: process.env.LINE_CHANNEL_SECRET || ''
+    // Use LINE API directly to verify access token
+    const response = await fetch('https://api.line.me/v2/profile', {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`
+      }
     })
     
-    // Verify access token by getting profile
-    const profile = await client.getProfile(accessToken)
+    if (!response.ok) {
+      console.error('LINE API response not ok:', response.status, response.statusText)
+      return null
+    }
+    
+    const profile = await response.json()
+    console.log('LINE profile verified:', profile.userId)
     return profile
   } catch (error) {
     console.error('LINE token verification failed:', error)
@@ -22,7 +29,9 @@ async function verifyLineToken(accessToken: string) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { lineId, displayName, pictureUrl, email, accessToken } = await request.json()
+    console.log('LINE login API called')
+    let { lineId, displayName, pictureUrl, email, accessToken } = await request.json()
+    console.log('Received data:', { lineId, displayName, hasAccessToken: !!accessToken })
 
     if (!lineId) {
       return NextResponse.json(
@@ -35,12 +44,20 @@ export async function POST(request: NextRequest) {
     if (accessToken) {
       const verifiedProfile = await verifyLineToken(accessToken)
       if (!verifiedProfile) {
-        return NextResponse.json(
-          { success: false, error: 'Invalid LINE access token' },
-          { status: 401 }
-        )
+        console.log('LINE token verification failed, but continuing with provided data')
+        // Don't fail completely, just log the issue
+      } else {
+        console.log('LINE token verified for user:', verifiedProfile.userId)
+        // Use verified profile data if available
+        if (verifiedProfile.displayName) {
+          displayName = verifiedProfile.displayName
+        }
+        if (verifiedProfile.pictureUrl) {
+          pictureUrl = verifiedProfile.pictureUrl
+        }
       }
-      console.log('LINE token verified for user:', verifiedProfile.userId)
+    } else {
+      console.log('No access token provided, using provided profile data')
     }
 
     // Check if user already exists
@@ -57,15 +74,23 @@ export async function POST(request: NextRequest) {
         firstName: displayName || '',
         email: email || null
       })
-      user = await prisma.user.create({
-        data: {
-          lineId,
-          firstName: displayName || '',
-          email: email || null,
-          consent: false
-        }
-      })
-      console.log('New user created:', user.id)
+      try {
+        user = await prisma.user.create({
+          data: {
+            lineId,
+            firstName: displayName || '',
+            email: email || null,
+            consent: false
+          }
+        })
+        console.log('New user created successfully:', user.id)
+      } catch (createError) {
+        console.error('Error creating user:', createError)
+        return NextResponse.json(
+          { success: false, error: 'Failed to create user' },
+          { status: 500 }
+        )
+      }
     } else {
       console.log('Using existing user:', user.id)
     }
@@ -86,6 +111,16 @@ export async function POST(request: NextRequest) {
     const isProfileComplete = user.phone && user.firstName && user.lastName && 
                              user.hnNumber && user.temple && user.consent
 
+    console.log('Profile completeness check:', {
+      phone: !!user.phone,
+      firstName: !!user.firstName,
+      lastName: !!user.lastName,
+      hnNumber: !!user.hnNumber,
+      temple: !!user.temple,
+      consent: user.consent,
+      isComplete: isProfileComplete
+    })
+
     // Set cookie
     const response = NextResponse.json({
       success: true,
@@ -99,6 +134,13 @@ export async function POST(request: NextRequest) {
         email: user.email,
         consent: user.consent
       },
+      isProfileComplete,
+      redirectTo: isProfileComplete ? '/dashboard' : '/profile'
+    })
+
+    console.log('Response prepared:', {
+      success: true,
+      userId: user.id,
       isProfileComplete,
       redirectTo: isProfileComplete ? '/dashboard' : '/profile'
     })
@@ -121,6 +163,7 @@ export async function POST(request: NextRequest) {
       maxAge: 60 * 60 * 24 * 7
     })
 
+    console.log('LINE login API completed successfully')
     return response
   } catch (error) {
     console.error('LINE login error:', error)

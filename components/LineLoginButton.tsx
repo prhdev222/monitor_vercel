@@ -144,6 +144,8 @@ export default function LineLoginButton({ className = '', children, onLineLogin,
       
       const result = await response.json()
       console.log('Backend response:', result)
+      console.log('Response success:', result.success)
+      console.log('Redirect to:', result.redirectTo)
 
       if (result.success) {
         const redirectTo = result.redirectTo || '/dashboard'
@@ -190,12 +192,14 @@ export default function LineLoginButton({ className = '', children, onLineLogin,
         
         if (isLineBrowserForRedirect) {
           console.log('LINE Browser detected, using immediate redirect')
+          console.log('Redirecting to:', redirectTo)
           
           // For LINE Browser, try immediate redirect without setTimeout
           console.log('Attempting immediate redirect: window.location.href')
           try {
             // Add a small delay to ensure cookie is set
             setTimeout(() => {
+              console.log('Executing redirect to:', redirectTo)
               window.location.href = redirectTo
             }, 100)
           } catch (error) {
@@ -207,8 +211,9 @@ export default function LineLoginButton({ className = '', children, onLineLogin,
           }
         } else {
           console.log('Regular browser, using router.push')
+          console.log('Redirecting to:', redirectTo)
           setTimeout(() => {
-            console.log('Redirecting to', redirectTo, 'with router.push')
+            console.log('Executing redirect to', redirectTo, 'with router.push')
             router.push(redirectTo)
           }, 500)
         }
