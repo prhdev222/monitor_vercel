@@ -77,10 +77,10 @@ export async function createUser(phone: string, password: string, firstName?: st
   })
 }
 
-export async function createUserWithLine(lineId: string, firstName?: string, lastName?: string, email?: string) {
+export async function createUserWithLine(lineUserId: string, firstName?: string, lastName?: string, email?: string) {
   return prisma.user.create({
     data: {
-      lineId,
+      lineUserId,
       firstName,
       lastName,
       email,

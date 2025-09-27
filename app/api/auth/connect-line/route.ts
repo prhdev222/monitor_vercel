@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { verifyToken } from '@/lib/auth'
+import { verifyToken, generateToken } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
 export async function POST(request: NextRequest) {
@@ -119,5 +119,3 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Import generateToken function
-import { generateToken } from '@/lib/auth'
