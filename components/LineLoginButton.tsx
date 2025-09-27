@@ -19,16 +19,21 @@ export default function LineLoginButton({ className = '', children, onLineLogin,
 
   useEffect(() => {
     const initLiff = async () => {
+      console.log('=== LIFF INITIALIZATION STARTED ===')
       try {
         const liffId = process.env.NEXT_PUBLIC_LIFF_ID
+        console.log('LIFF ID from env:', liffId ? 'Found' : 'Not found')
+        
         if (!liffId) {
           console.warn('LIFF ID not found in environment variables - using fallback mode')
           setIsLiffReady(true) // Set ready even without LIFF
           return
         }
 
+        console.log('Initializing LIFF with ID:', liffId)
         await lineService.init(liffId)
         setIsLiffReady(true)
+        console.log('LIFF initialized successfully')
 
         // Check if already logged in
         if (lineService.isLoggedIn()) {
@@ -50,14 +55,26 @@ export default function LineLoginButton({ className = '', children, onLineLogin,
         console.log('Falling back to manual login mode')
         setIsLiffReady(true) // Set ready even if LIFF fails
       }
+      console.log('=== LIFF INITIALIZATION COMPLETED ===')
     }
 
     initLiff()
   }, [])
 
   const handleLineLogin = async () => {
+    console.log('=== LINE LOGIN BUTTON CLICKED ===')
+    console.log('isLiffReady:', isLiffReady)
+    console.log('isLoading:', isLoading)
+    console.log('disabled:', disabled)
+    
     if (!isLiffReady) {
+      console.log('LIFF not ready, showing error toast')
       toast.error('กรุณารอสักครู่...')
+      return
+    }
+
+    if (disabled) {
+      console.log('Button is disabled, not proceeding')
       return
     }
 
@@ -76,7 +93,9 @@ export default function LineLoginButton({ className = '', children, onLineLogin,
       
       if (!lineService.isLoggedIn()) {
         console.log('User not logged in to LINE, redirecting to LINE login')
+        console.log('Calling lineService.login()...')
         await lineService.login()
+        console.log('lineService.login() completed')
         return
       }
 

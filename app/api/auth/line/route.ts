@@ -1,194 +1,58 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { generateToken } from '@/lib/auth'
-import { Client } from '@line/bot-sdk'
+import { NextResponse } from "next/server";
 
-// Function to verify LINE access token and get profile
-async function verifyLineToken(accessToken: string) {
+export async function GET() {
   try {
-    // Use LINE API directly to verify access token
-    const response = await fetch('https://api.line.me/v2/profile', {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`
-      }
-    })
+    const channelId = process.env.NEXT_PUBLIC_LINE_CHANNEL_ID;
+    const redirectUri = process.env.NEXT_PUBLIC_LINE_REDIRECT_URI;
     
-    if (!response.ok) {
-      console.error('LINE API response not ok:', response.status, response.statusText)
-      return null
+    if (!channelId || !redirectUri) {
+      return NextResponse.json({ error: "LINE configuration missing" }, { status: 500 });
     }
+
+    // Generate state parameter for security
+    const state = Math.random().toString(36).substring(2, 15);
     
-    const profile = await response.json()
-    console.log('LINE profile verified:', profile.userId)
-    return profile
+    // Build LINE Login URL
+    const lineLoginUrl = new URL("https://access.line.me/oauth2/v2.1/authorize");
+    lineLoginUrl.searchParams.set("response_type", "code");
+    lineLoginUrl.searchParams.set("client_id", channelId);
+    lineLoginUrl.searchParams.set("redirect_uri", redirectUri);
+    lineLoginUrl.searchParams.set("state", state);
+    lineLoginUrl.searchParams.set("scope", "profile openid");
+
+    return NextResponse.redirect(lineLoginUrl.toString());
   } catch (error) {
-    console.error('LINE token verification failed:', error)
-    return null
+    console.error("LINE Login initiation error:", error);
+    return NextResponse.json({ error: "Failed to initiate LINE login" }, { status: 500 });
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
-    console.log('LINE login API called')
-    let { lineId, displayName, pictureUrl, email, accessToken } = await request.json()
-    console.log('Received data:', { 
-      lineId, 
-      displayName, 
-      hasAccessToken: !!accessToken,
-      email: email || 'No email',
-      pictureUrl: pictureUrl || 'No picture'
-    })
-
-    if (!lineId) {
-      return NextResponse.json(
-        { success: false, error: 'LINE ID is required' },
-        { status: 400 }
-      )
-    }
-
-    // If accessToken is provided, verify it
-    if (accessToken) {
-      const verifiedProfile = await verifyLineToken(accessToken)
-      if (!verifiedProfile) {
-        console.log('LINE token verification failed, but continuing with provided data')
-        // Don't fail completely, just log the issue
-      } else {
-        console.log('LINE token verified for user:', verifiedProfile.userId)
-        // Use verified profile data if available
-        if (verifiedProfile.displayName) {
-          displayName = verifiedProfile.displayName
-        }
-        if (verifiedProfile.pictureUrl) {
-          pictureUrl = verifiedProfile.pictureUrl
-        }
-      }
-    } else {
-      console.log('No access token provided, using provided profile data')
-    }
-
-    // Check if user already exists
-    console.log('Looking for user with lineUserId:', lineId)
-    let user = await prisma.user.findUnique({
-      where: { lineUserId: lineId }
-    })
-    console.log('User found:', !!user, user ? `ID: ${user.id}` : 'No user found')
-
-    if (!user) {
-      // Create new user with LINE data
-      console.log('Creating new user with LINE data:', {
-        lineId,
-        firstName: displayName || '',
-        email: email || null
-      })
-      try {
-        const userData = {
-          lineUserId: lineId, // Store LINE User ID
-          lineDisplayName: displayName || '',
-          firstName: displayName || '',
-          email: email || null,
-          consent: false
-        }
-        console.log('Creating user with data:', userData)
-        
-        user = await prisma.user.create({
-          data: userData
-        })
-        console.log('New user created successfully:', {
-          id: user.id,
-          lineUserId: user.lineUserId,
-          lineDisplayName: user.lineDisplayName,
-          firstName: user.firstName
-        })
-      } catch (createError) {
-        console.error('Error creating user:', createError)
-        return NextResponse.json(
-          { success: false, error: 'Failed to create user' },
-          { status: 500 }
-        )
-      }
-    } else {
-      console.log('Using existing user:', user.id)
-    }
-
-    // Generate JWT token
-    const token = generateToken({
-      id: user.id,
-      phone: user.phone || '',
-      firstName: user.firstName || '',
-      lastName: user.lastName || '',
-      hnNumber: user.hnNumber || '',
-      temple: user.temple || '',
-      email: user.email || '',
-      consent: user.consent
-    })
-
-    // Check if user profile is complete
-    const isProfileComplete = user.phone && user.firstName && user.lastName && 
-                             user.hnNumber && user.temple && user.consent
-
-    console.log('Profile completeness check:', {
-      phone: !!user.phone,
-      firstName: !!user.firstName,
-      lastName: !!user.lastName,
-      hnNumber: !!user.hnNumber,
-      temple: !!user.temple,
-      consent: user.consent,
-      isComplete: isProfileComplete
-    })
-
-    // Set cookie
-    const response = NextResponse.json({
-      success: true,
-      user: {
-        id: user.id,
-        phone: user.phone || '',
-        firstName: user.firstName,
-        lastName: user.lastName,
-        hnNumber: user.hnNumber,
-        temple: user.temple,
-        email: user.email,
-        consent: user.consent,
-        lineUserId: user.lineUserId,
-        lineDisplayName: user.lineDisplayName
-      },
-      isProfileComplete,
-      redirectTo: isProfileComplete ? '/dashboard' : '/profile'
-    })
-
-    console.log('Response prepared:', {
-      success: true,
-      userId: user.id,
-      userLineUserId: user.lineUserId,
-      userLineDisplayName: user.lineDisplayName,
-      isProfileComplete,
-      redirectTo: isProfileComplete ? '/dashboard' : '/profile'
-    })
-
-    // Set cookie with LINE Browser compatibility
-    const cookieOptions = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax' as const, // Changed back to 'lax' for better compatibility
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-      path: '/' // Ensure cookie is available for all paths
-    }
+    const channelId = process.env.NEXT_PUBLIC_LINE_CHANNEL_ID;
+    const redirectUri = process.env.NEXT_PUBLIC_LINE_REDIRECT_URI;
     
-    response.cookies.set('auth-token', token, cookieOptions)
-    
-    console.log('Cookie set successfully:', {
-      tokenLength: token.length,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7
-    })
+    if (!channelId || !redirectUri) {
+      return NextResponse.json({ error: "LINE configuration missing" }, { status: 500 });
+    }
 
-    console.log('LINE login API completed successfully')
-    return response
+    // Generate state parameter for security
+    const state = Math.random().toString(36).substring(2, 15);
+    
+    // Build LINE Login URL
+    const lineLoginUrl = new URL("https://access.line.me/oauth2/v2.1/authorize");
+    lineLoginUrl.searchParams.set("response_type", "code");
+    lineLoginUrl.searchParams.set("client_id", channelId);
+    lineLoginUrl.searchParams.set("redirect_uri", redirectUri);
+    lineLoginUrl.searchParams.set("state", state);
+    lineLoginUrl.searchParams.set("scope", "profile openid");
+
+    return NextResponse.json({ 
+      loginUrl: lineLoginUrl.toString(),
+      state 
+    });
   } catch (error) {
-    console.error('LINE login error:', error)
-    return NextResponse.json(
-      { success: false, error: 'Internal server error' },
-      { status: 500 }
-    )
+    console.error("LINE Login URL generation error:", error);
+    return NextResponse.json({ error: "Failed to generate LINE login URL" }, { status: 500 });
   }
 }
