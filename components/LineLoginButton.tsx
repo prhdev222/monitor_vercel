@@ -76,7 +76,10 @@ export default function LineLoginButton({ className = '', children }: LineLoginB
 
       if (result.success) {
         toast.success('เข้าสู่ระบบด้วย LINE สำเร็จ')
-        router.push('/dashboard')
+        // Add a small delay to ensure cookie is set before redirect
+        setTimeout(() => {
+          window.location.href = '/dashboard'
+        }, 500)
       } else {
         throw new Error(result.error || 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ')
       }
