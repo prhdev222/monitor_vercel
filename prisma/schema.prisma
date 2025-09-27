@@ -20,6 +20,8 @@ model User {
   email     String?
   password  String?
   lineId    String?  @unique // LINE User ID
+  lineDisplayName String? // LINE Display Name
+  lineUserId String? @unique // LINE User ID (alternative field)
   consent   Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

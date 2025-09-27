@@ -60,6 +60,8 @@ interface User {
   email?: string
   consent: boolean
   lineId?: string
+  lineUserId?: string
+  lineDisplayName?: string
 }
 
 interface BloodPressureRecord {

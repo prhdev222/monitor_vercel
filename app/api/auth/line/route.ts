@@ -83,6 +83,8 @@ export async function POST(request: NextRequest) {
       try {
         const userData = {
           lineId,
+          lineUserId: lineId, // Store LINE User ID in both fields
+          lineDisplayName: displayName || '',
           firstName: displayName || '',
           email: email || null,
           consent: false
@@ -95,6 +97,8 @@ export async function POST(request: NextRequest) {
         console.log('New user created successfully:', {
           id: user.id,
           lineId: user.lineId,
+          lineUserId: user.lineUserId,
+          lineDisplayName: user.lineDisplayName,
           firstName: user.firstName
         })
       } catch (createError) {
@@ -145,7 +149,10 @@ export async function POST(request: NextRequest) {
         hnNumber: user.hnNumber,
         temple: user.temple,
         email: user.email,
-        consent: user.consent
+        consent: user.consent,
+        lineId: user.lineId,
+        lineUserId: user.lineUserId,
+        lineDisplayName: user.lineDisplayName
       },
       isProfileComplete,
       redirectTo: isProfileComplete ? '/dashboard' : '/profile'
@@ -155,6 +162,8 @@ export async function POST(request: NextRequest) {
       success: true,
       userId: user.id,
       userLineId: user.lineId,
+      userLineUserId: user.lineUserId,
+      userLineDisplayName: user.lineDisplayName,
       isProfileComplete,
       redirectTo: isProfileComplete ? '/dashboard' : '/profile'
     })

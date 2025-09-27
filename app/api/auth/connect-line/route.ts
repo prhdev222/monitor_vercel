@@ -49,6 +49,8 @@ export async function POST(request: NextRequest) {
     // Update user with LINE data
     const updateData = {
       lineId: lineId,
+      lineUserId: lineId, // Store LINE User ID in both fields
+      lineDisplayName: displayName || '',
       // Update firstName if it's empty and we have displayName
       firstName: user.firstName || displayName || user.firstName,
       // Update email if it's empty and we have email from LINE
@@ -65,6 +67,8 @@ export async function POST(request: NextRequest) {
     console.log('User updated successfully:', {
       id: updatedUser.id,
       lineId: updatedUser.lineId,
+      lineUserId: updatedUser.lineUserId,
+      lineDisplayName: updatedUser.lineDisplayName,
       firstName: updatedUser.firstName
     })
 
@@ -92,7 +96,9 @@ export async function POST(request: NextRequest) {
         temple: updatedUser.temple,
         email: updatedUser.email,
         consent: updatedUser.consent,
-        lineId: updatedUser.lineId
+        lineId: updatedUser.lineId,
+        lineUserId: updatedUser.lineUserId,
+        lineDisplayName: updatedUser.lineDisplayName
       }
     })
 
