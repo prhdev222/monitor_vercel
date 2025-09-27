@@ -17,7 +17,8 @@ import {
   Calendar,
   Clock,
   Edit,
-  Trash2
+  Trash2,
+  Settings
 } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
@@ -1151,12 +1152,21 @@ export default function DashboardPage() {
                 <Heart className="h-6 w-6 text-primary-600 mr-2" />
                 <h1 className="text-base font-bold text-gray-900">ระบบบันทึกข้อมูลสุขภาพดิจิตอล</h1>
               </div>
-              <button
-                onClick={handleLogout}
-                className="flex items-center text-gray-600 hover:text-gray-900 p-2"
-              >
-                <LogOut className="h-5 w-5" />
-              </button>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => router.push('/edit-profile')}
+                  className="flex items-center text-gray-600 hover:text-gray-900 p-2"
+                  title="แก้ไขประวัติ"
+                >
+                  <Settings className="h-5 w-5" />
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center text-gray-600 hover:text-gray-900 p-2"
+                >
+                  <LogOut className="h-5 w-5" />
+                </button>
+              </div>
             </div>
             <div className="text-sm text-gray-600">
               <p className="font-medium">สวัสดี, พระคุณเจ้า {user?.firstName} {user?.lastName}</p>
@@ -1176,6 +1186,14 @@ export default function DashboardPage() {
               <span className="text-sm text-gray-600">
                 สวัสดี, พระคุณเจ้า {user?.firstName} {user?.lastName} {user?.hnNumber && `(HN: ${user.hnNumber})`}
               </span>
+              <button
+                onClick={() => router.push('/edit-profile')}
+                className="flex items-center text-gray-600 hover:text-gray-900"
+                title="แก้ไขประวัติ"
+              >
+                <Settings className="h-5 w-5 mr-1" />
+                แก้ไขประวัติ
+              </button>
               <button
                 onClick={handleLogout}
                 className="flex items-center text-gray-600 hover:text-gray-900"
