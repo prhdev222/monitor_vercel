@@ -15,26 +15,37 @@ const profileSchema = z.object({
 
 export async function PUT(request: NextRequest) {
   try {
+    console.log('Profile update API called')
+    
     // Verify authentication
     const token = request.cookies.get('auth-token')?.value
     if (!token) {
+      console.log('No auth token found')
       return NextResponse.json(
-        { error: 'ไม่พบ token' },
+        { success: false, error: 'ไม่พบ token' },
         { status: 401 }
       )
     }
 
     const user = verifyToken(token)
     if (!user) {
+      console.log('Invalid token')
       return NextResponse.json(
-        { error: 'Token ไม่ถูกต้อง' },
+        { success: false, error: 'Token ไม่ถูกต้อง' },
         { status: 401 }
       )
     }
 
+    console.log('User authenticated:', user.id)
+
     // Parse and validate request body
     const body = await request.json()
-    const { phone, firstName, lastName, hnNumber, temple, email, consent } = profileSchema.parse(body)
+    console.log('Request body:', body)
+    
+    const validatedData = profileSchema.parse(body)
+    const { phone, firstName, lastName, hnNumber, temple, email, consent } = validatedData
+
+    console.log('Validated data:', validatedData)
 
     // Check if phone is already taken by another user
     const existingUser = await prisma.user.findFirst({
@@ -45,8 +56,9 @@ export async function PUT(request: NextRequest) {
     })
 
     if (existingUser) {
+      console.log('Phone number already taken by user:', existingUser.id)
       return NextResponse.json(
-        { error: 'เบอร์โทรศัพท์นี้มีผู้ใช้งานแล้ว' },
+        { success: false, error: 'เบอร์โทรศัพท์นี้มีผู้ใช้งานแล้ว' },
         { status: 400 }
       )
     }
@@ -65,6 +77,8 @@ export async function PUT(request: NextRequest) {
       }
     })
 
+    console.log('User updated successfully:', updatedUser.id)
+
     return NextResponse.json({
       success: true,
       message: 'บันทึกข้อมูลสำเร็จ',
@@ -81,16 +95,18 @@ export async function PUT(request: NextRequest) {
     })
 
   } catch (error) {
+    console.error('Profile update error:', error)
+    
     if (error instanceof z.ZodError) {
+      console.log('Validation error:', error.errors)
       return NextResponse.json(
-        { error: error.errors[0].message },
+        { success: false, error: error.errors[0].message },
         { status: 400 }
       )
     }
 
-    console.error('Profile update error:', error)
     return NextResponse.json(
-      { error: 'เกิดข้อผิดพลาดในการบันทึกข้อมูล' },
+      { success: false, error: 'เกิดข้อผิดพลาดในการบันทึกข้อมูล' },
       { status: 500 }
     )
   }

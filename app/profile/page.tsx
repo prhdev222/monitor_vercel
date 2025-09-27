@@ -85,6 +85,8 @@ export default function ProfilePage() {
   const onSubmit = async (data: ProfileForm) => {
     setIsSaving(true)
     try {
+      console.log('Submitting profile data:', data)
+      
       const response = await fetch('/api/auth/profile', {
         method: 'PUT',
         headers: {
@@ -94,15 +96,20 @@ export default function ProfilePage() {
         body: JSON.stringify(data)
       })
 
+      console.log('Response status:', response.status)
       const result = await response.json()
+      console.log('Response result:', result)
 
-      if (result.success) {
+      if (response.ok && result.success) {
         toast.success('บันทึกข้อมูลสำเร็จ')
         router.push('/dashboard')
       } else {
-        toast.error(result.error || 'เกิดข้อผิดพลาด')
+        const errorMessage = result.error || `เกิดข้อผิดพลาด (${response.status})`
+        toast.error(errorMessage)
+        console.error('Profile update failed:', result)
       }
     } catch (error) {
+      console.error('Profile update error:', error)
       toast.error('เกิดข้อผิดพลาดในการบันทึกข้อมูล')
     } finally {
       setIsSaving(false)
@@ -245,24 +252,24 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <div>
+          <div className="space-y-3">
             <button
               type="submit"
               disabled={isSaving}
-              className="w-full btn-primary py-3 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-orange-500 hover:bg-orange-600 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-lg"
             >
               {isSaving ? 'กำลังบันทึก...' : 'บันทึกข้อมูล'}
             </button>
-          </div>
-
-          <div className="text-center">
-            <button
-              type="button"
-              onClick={() => router.push('/dashboard')}
-              className="text-sm text-primary-600 hover:text-primary-500"
-            >
-              ข้ามไปยัง Dashboard
-            </button>
+            
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={() => router.push('/dashboard')}
+                className="text-sm text-orange-600 hover:text-orange-500 underline"
+              >
+                ข้ามไปยัง Dashboard
+              </button>
+            </div>
           </div>
         </form>
       </div>
