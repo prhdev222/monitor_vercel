@@ -1,9 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { lineService } from '@/lib/line'
 
 interface LineLoginButtonProps {
   className?: string
@@ -15,50 +13,10 @@ interface LineLoginButtonProps {
 export default function LineLoginButton({ className = '', children, onLineLogin, disabled = false }: LineLoginButtonProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [isLiffReady, setIsLiffReady] = useState(false)
-  const router = useRouter()
 
   useEffect(() => {
-    const initLiff = async () => {
-      console.log('=== LIFF INITIALIZATION STARTED ===')
-      try {
-        const liffId = process.env.NEXT_PUBLIC_LIFF_ID
-        console.log('LIFF ID from env:', liffId ? 'Found' : 'Not found')
-        
-        if (!liffId) {
-          console.warn('LIFF ID not found in environment variables - using fallback mode')
-          setIsLiffReady(true) // Set ready even without LIFF
-          return
-        }
-
-        console.log('Initializing LIFF with ID:', liffId)
-        await lineService.init(liffId)
-        setIsLiffReady(true)
-        console.log('LIFF initialized successfully')
-
-        // Check if already logged in
-        if (lineService.isLoggedIn()) {
-          console.log('User already logged in to LINE, auto-login')
-          await handleLineLogin()
-        } else {
-          // Check URL parameters for LINE login callback
-          const urlParams = new URLSearchParams(window.location.search)
-          const code = urlParams.get('code')
-          const state = urlParams.get('state')
-          
-          if (code && state) {
-            console.log('LINE login callback detected, processing...')
-            await handleLineLogin()
-          }
-        }
-      } catch (error) {
-        console.error('LIFF initialization failed:', error)
-        console.log('Falling back to manual login mode')
-        setIsLiffReady(true) // Set ready even if LIFF fails
-      }
-      console.log('=== LIFF INITIALIZATION COMPLETED ===')
-    }
-
-    initLiff()
+    // Set ready immediately for OAuth flow
+    setIsLiffReady(true)
   }, [])
 
   const handleLineLogin = async () => {
@@ -67,12 +25,6 @@ export default function LineLoginButton({ className = '', children, onLineLogin,
     console.log('isLoading:', isLoading)
     console.log('disabled:', disabled)
     
-    if (!isLiffReady) {
-      console.log('LIFF not ready, showing error toast')
-      toast.error('กรุณารอสักครู่...')
-      return
-    }
-
     if (disabled) {
       console.log('Button is disabled, not proceeding')
       return
@@ -80,173 +32,18 @@ export default function LineLoginButton({ className = '', children, onLineLogin,
 
     setIsLoading(true)
     try {
-      console.log('LINE login started')
+      console.log('LINE login started - redirecting to LINE OAuth')
       
-      // Check if LIFF is available
-      const liffId = process.env.NEXT_PUBLIC_LIFF_ID
-      if (!liffId) {
-        console.log('LIFF not available, redirecting to fallback page')
-        // Redirect to fallback page for LINE login
-        router.push('/line-login-fallback')
-        return
-      }
+      // Redirect to LINE OAuth endpoint
+      window.location.href = '/api/auth/line'
       
-      if (!lineService.isLoggedIn()) {
-        console.log('User not logged in to LINE, redirecting to LINE login')
-        console.log('Calling lineService.login()...')
-        await lineService.login()
-        console.log('lineService.login() completed')
-        return
-      }
-
-      console.log('User is logged in to LINE, getting profile')
-      const profile = await lineService.getProfile()
-      const accessToken = await lineService.getAccessToken()
-      console.log('LINE profile:', profile)
-      console.log('LINE access token:', accessToken ? 'Available' : 'Not available')
-      
-      if (!profile) {
-        throw new Error('ไม่สามารถดึงข้อมูลโปรไฟล์ LINE ได้')
-      }
-
-      // Add access token to profile
-      const profileWithToken = {
-        ...profile,
-        accessToken: accessToken
-      }
-
-      if (onLineLogin) {
-        onLineLogin(profileWithToken)
-      } else {
-        await processLineLogin(profileWithToken)
-      }
     } catch (error) {
       console.error('LINE login error:', error)
       toast.error(error instanceof Error ? error.message : 'เกิดข้อผิดพลาดในการเข้าสู่ระบบด้วย LINE')
-    } finally {
       setIsLoading(false)
     }
   }
 
-  const processLineLogin = async (profile: any) => {
-    try {
-      // Send profile to backend
-      console.log('Sending profile to backend:', {
-        lineId: profile.userId, // This is LINE User ID
-        displayName: profile.displayName,
-        hasEmail: !!profile.email,
-        hasAccessToken: !!profile.accessToken
-      })
-      console.log('Full profile data:', profile)
-      
-      const response = await fetch('/api/auth/line', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include', // Ensure cookies are sent and received
-        body: JSON.stringify({
-          lineId: profile.userId, // This is actually LINE User ID
-          displayName: profile.displayName,
-          pictureUrl: profile.pictureUrl,
-          email: profile.email,
-          accessToken: profile.accessToken
-        })
-      })
-
-      console.log('Backend response status:', response.status)
-      console.log('Response headers:', Object.fromEntries(response.headers.entries()))
-      
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error('HTTP error:', response.status, response.statusText, errorText)
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-      }
-      
-      const result = await response.json()
-      console.log('Backend response:', result)
-      console.log('Response success:', result.success)
-      console.log('Redirect to:', result.redirectTo)
-
-      if (result.success) {
-        const redirectTo = result.redirectTo || '/dashboard'
-        const isProfileComplete = result.isProfileComplete
-        
-        console.log('Login successful, redirecting to:', redirectTo)
-        console.log('Profile complete:', isProfileComplete)
-        
-        if (isProfileComplete) {
-          toast.success('เข้าสู่ระบบด้วย LINE สำเร็จ')
-        } else {
-          toast.success('เข้าสู่ระบบด้วย LINE สำเร็จ กรุณากรอกข้อมูลเพิ่มเติม')
-        }
-        
-        // Show additional message for LINE Browser users
-        const isLineBrowserForToast = /Line/i.test(navigator.userAgent) || 
-                                     /LineBrowser/i.test(navigator.userAgent) ||
-                                     /LINE/i.test(navigator.userAgent)
-        
-        if (isLineBrowserForToast) {
-          const message = isProfileComplete 
-            ? 'กำลังพาไปยังหน้า Dashboard... หากไม่ไปอัตโนมัติ กรุณากดปุ่มด้านล่าง'
-            : 'กำลังพาไปยังหน้า Profile... หากไม่ไปอัตโนมัติ กรุณากดปุ่มด้านล่าง'
-          toast(message, {
-            duration: 5000,
-            position: 'top-center'
-          })
-        }
-        
-        // Store user data in localStorage as backup
-        console.log('Storing user data in localStorage:', result.user)
-        localStorage.setItem('user', JSON.stringify(result.user))
-        localStorage.setItem('line-login-success', 'true')
-        
-        // Verify storage
-        const storedUser = localStorage.getItem('user')
-        const storedFlag = localStorage.getItem('line-login-success')
-        console.log('Verification - stored user:', !!storedUser, 'stored flag:', storedFlag)
-        
-        // For LINE Browser, use window.location.href instead of router.push
-        const isLineBrowserForRedirect = /Line/i.test(navigator.userAgent) || 
-                                        /LineBrowser/i.test(navigator.userAgent) ||
-                                        /LINE/i.test(navigator.userAgent)
-        
-        if (isLineBrowserForRedirect) {
-          console.log('LINE Browser detected, using immediate redirect')
-          console.log('Redirecting to:', redirectTo)
-          
-          // For LINE Browser, try immediate redirect without setTimeout
-          console.log('Attempting immediate redirect: window.location.href')
-          try {
-            // Add a small delay to ensure cookie is set
-            setTimeout(() => {
-              console.log('Executing redirect to:', redirectTo)
-              window.location.href = redirectTo
-            }, 100)
-          } catch (error) {
-            console.error('Immediate redirect failed:', error)
-            
-            // Fallback: try router.push
-            console.log('Fallback: using router.push')
-            router.push(redirectTo)
-          }
-        } else {
-          console.log('Regular browser, using router.push')
-          console.log('Redirecting to:', redirectTo)
-          setTimeout(() => {
-            console.log('Executing redirect to', redirectTo, 'with router.push')
-            router.push(redirectTo)
-          }, 500)
-        }
-      } else {
-        console.error('Login failed:', result.error)
-        throw new Error(result.error || 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ')
-      }
-    } catch (error) {
-      console.error('LINE login processing error:', error)
-      throw error
-    }
-  }
 
   return (
     <div className="flex flex-col gap-2">
@@ -270,35 +67,6 @@ export default function LineLoginButton({ className = '', children, onLineLogin,
         {children || (isLoading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบด้วย LINE')}
       </button>
       
-      {/* Manual redirect button for LINE Browser users */}
-      {typeof window !== 'undefined' && localStorage.getItem('line-login-success') === 'true' && (
-        <button
-          onClick={() => {
-            const userData = localStorage.getItem('user')
-            if (userData) {
-              try {
-                const user = JSON.parse(userData)
-                const isProfileComplete = user.phone && user.firstName && user.lastName && 
-                                         user.hnNumber && user.temple && user.consent
-                const redirectTo = isProfileComplete ? '/dashboard' : '/profile'
-                console.log('Manual redirect to:', redirectTo)
-                window.location.href = redirectTo
-              } catch (error) {
-                console.error('Error parsing user data:', error)
-                window.location.href = '/dashboard'
-              }
-            } else {
-              window.location.href = '/dashboard'
-            }
-          }}
-          className="flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-          </svg>
-          ไปยังหน้าถัดไป
-        </button>
-      )}
     </div>
   )
 }
