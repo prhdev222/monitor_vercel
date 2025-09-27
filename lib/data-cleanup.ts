@@ -64,7 +64,7 @@ export async function cleanupOldData() {
             lastName: user.lastName || undefined,
             hnNumber: user.hnNumber || undefined,
             temple: user.temple || undefined,
-            phone: user.phone,
+            phone: user.phone || '',
             email: user.email || undefined
           },
           bloodPressureRecords: user.bloodPressureRecords.map(record => ({
