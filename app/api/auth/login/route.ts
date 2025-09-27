@@ -40,12 +40,12 @@ export async function POST(request: NextRequest) {
     // Generate JWT token
     const token = generateToken({
       id: user.id,
-      phone: user.phone,
-      firstName: user.firstName || undefined,
-      lastName: user.lastName || undefined,
-      hnNumber: user.hnNumber || undefined,
-      temple: user.temple || undefined,
-      email: user.email || undefined,
+      phone: user.phone || '',
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      hnNumber: user.hnNumber || '',
+      temple: user.temple || '',
+      email: user.email || '',
       consent: user.consent
     })
 
