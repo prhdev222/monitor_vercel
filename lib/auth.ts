@@ -95,9 +95,9 @@ export async function findUserByPhone(phone: string) {
   })
 }
 
-export async function findUserByLineId(lineId: string) {
+export async function findUserByLineId(lineUserId: string) {
   return prisma.user.findUnique({
-    where: { lineId }
+    where: { lineUserId }
   })
 }
 

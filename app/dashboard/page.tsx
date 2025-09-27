@@ -59,7 +59,6 @@ interface User {
   temple?: string
   email?: string
   consent: boolean
-  lineId?: string
   lineUserId?: string
   lineDisplayName?: string
 }
@@ -2363,7 +2362,7 @@ ${sugarRows.map(row => `${row.date} ${row.time}: ${row.value}`).join('\n')}
                   </p>
                 )}
                 
-                {!(user as any)?.lineId && (
+                {!user?.lineUserId && (
                   <div className="mt-4 p-4 bg-blue-50 rounded-lg">
                     <h4 className="font-medium text-blue-800 mb-2">
                       เชื่อม LINE Account

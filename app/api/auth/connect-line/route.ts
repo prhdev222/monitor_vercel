@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     // Check if LINE ID is already used by another user
     const existingLineUser = await prisma.user.findFirst({
       where: {
-        lineId: lineId,
+        lineUserId: lineId,
         id: { not: user.id }
       }
     })
@@ -48,8 +48,7 @@ export async function POST(request: NextRequest) {
 
     // Update user with LINE data
     const updateData = {
-      lineId: lineId,
-      lineUserId: lineId, // Store LINE User ID in both fields
+      lineUserId: lineId, // Store LINE User ID
       lineDisplayName: displayName || '',
       // Update firstName if it's empty and we have displayName
       firstName: user.firstName || displayName || user.firstName,
@@ -66,7 +65,6 @@ export async function POST(request: NextRequest) {
     
     console.log('User updated successfully:', {
       id: updatedUser.id,
-      lineId: updatedUser.lineId,
       lineUserId: updatedUser.lineUserId,
       lineDisplayName: updatedUser.lineDisplayName,
       firstName: updatedUser.firstName
@@ -96,7 +94,6 @@ export async function POST(request: NextRequest) {
         temple: updatedUser.temple,
         email: updatedUser.email,
         consent: updatedUser.consent,
-        lineId: updatedUser.lineId,
         lineUserId: updatedUser.lineUserId,
         lineDisplayName: updatedUser.lineDisplayName
       }

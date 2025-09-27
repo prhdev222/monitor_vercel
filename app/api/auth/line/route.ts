@@ -67,9 +67,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user already exists
-    console.log('Looking for user with lineId:', lineId)
+    console.log('Looking for user with lineUserId:', lineId)
     let user = await prisma.user.findUnique({
-      where: { lineId }
+      where: { lineUserId: lineId }
     })
     console.log('User found:', !!user, user ? `ID: ${user.id}` : 'No user found')
 
@@ -82,8 +82,7 @@ export async function POST(request: NextRequest) {
       })
       try {
         const userData = {
-          lineId,
-          lineUserId: lineId, // Store LINE User ID in both fields
+          lineUserId: lineId, // Store LINE User ID
           lineDisplayName: displayName || '',
           firstName: displayName || '',
           email: email || null,
@@ -96,7 +95,6 @@ export async function POST(request: NextRequest) {
         })
         console.log('New user created successfully:', {
           id: user.id,
-          lineId: user.lineId,
           lineUserId: user.lineUserId,
           lineDisplayName: user.lineDisplayName,
           firstName: user.firstName
@@ -150,7 +148,6 @@ export async function POST(request: NextRequest) {
         temple: user.temple,
         email: user.email,
         consent: user.consent,
-        lineId: user.lineId,
         lineUserId: user.lineUserId,
         lineDisplayName: user.lineDisplayName
       },
@@ -161,7 +158,6 @@ export async function POST(request: NextRequest) {
     console.log('Response prepared:', {
       success: true,
       userId: user.id,
-      userLineId: user.lineId,
       userLineUserId: user.lineUserId,
       userLineDisplayName: user.lineDisplayName,
       isProfileComplete,
