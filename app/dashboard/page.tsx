@@ -22,6 +22,145 @@ import {
 } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
+// Calendar View Component
+interface CalendarViewProps {
+  currentMonth: Date
+  bloodPressureRecords: BloodPressureRecord[]
+  bloodSugarRecords: BloodSugarRecord[]
+  filter: 'all' | 'bp' | 'bs'
+  onDateClick: (date: Date) => void
+  selectedDate: Date | null
+}
+
+const CalendarView: React.FC<CalendarViewProps> = ({
+  currentMonth,
+  bloodPressureRecords,
+  bloodSugarRecords,
+  filter,
+  onDateClick,
+  selectedDate
+}) => {
+  const getDaysInMonth = (date: Date) => {
+    const year = date.getFullYear()
+    const month = date.getMonth()
+    const firstDay = new Date(year, month, 1)
+    const lastDay = new Date(year, month + 1, 0)
+    const daysInMonth = lastDay.getDate()
+    const startingDayOfWeek = firstDay.getDay()
+    
+    const days = []
+    
+    // Add empty cells for days before the first day of the month
+    for (let i = 0; i < startingDayOfWeek; i++) {
+      days.push(null)
+    }
+    
+    // Add days of the month
+    for (let day = 1; day <= daysInMonth; day++) {
+      days.push(new Date(year, month, day))
+    }
+    
+    return days
+  }
+
+  const getRecordsForDate = (date: Date) => {
+    const dateStr = date.toISOString().split('T')[0]
+    const bpRecords = bloodPressureRecords.filter(r => r.recordedAt.startsWith(dateStr))
+    const bsRecords = bloodSugarRecords.filter(r => r.recordedAt.startsWith(dateStr))
+    
+    if (filter === 'bp') return bpRecords
+    if (filter === 'bs') return bsRecords
+    return [...bpRecords, ...bsRecords]
+  }
+
+  const getDateStatus = (date: Date) => {
+    const records = getRecordsForDate(date)
+    if (records.length === 0) return 'empty'
+    
+    const hasBP = records.some(r => 'systolic' in r)
+    const hasBS = records.some(r => 'value' in r)
+    
+    if (hasBP && hasBS) return 'both'
+    if (hasBP) return 'bp'
+    if (hasBS) return 'bs'
+    return 'empty'
+  }
+
+  const days = getDaysInMonth(currentMonth)
+  const dayNames = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส']
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      {/* Day headers */}
+      <div className="grid grid-cols-7 bg-gray-50">
+        {dayNames.map(day => (
+          <div key={day} className="p-2 text-center text-sm font-medium text-gray-600 border-r border-gray-200 last:border-r-0">
+            {day}
+          </div>
+        ))}
+      </div>
+      
+      {/* Calendar grid */}
+      <div className="grid grid-cols-7">
+        {days.map((day, index) => {
+          if (!day) {
+            return <div key={index} className="h-16 border-r border-b border-gray-200 last:border-r-0"></div>
+          }
+          
+          const status = getDateStatus(day)
+          const isSelected = selectedDate && day.toDateString() === selectedDate.toDateString()
+          const isToday = day.toDateString() === new Date().toDateString()
+          
+          let bgColor = 'bg-white'
+          let textColor = 'text-gray-900'
+          let borderColor = 'border-gray-200'
+          
+          if (isSelected) {
+            bgColor = 'bg-blue-100'
+            textColor = 'text-blue-900'
+            borderColor = 'border-blue-300'
+          } else if (isToday) {
+            bgColor = 'bg-yellow-50'
+            textColor = 'text-yellow-900'
+            borderColor = 'border-yellow-300'
+          }
+          
+          let statusIndicator = null
+          if (status === 'bp') {
+            statusIndicator = <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+          } else if (status === 'bs') {
+            statusIndicator = <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+          } else if (status === 'both') {
+            statusIndicator = (
+              <div className="flex gap-1">
+                <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              </div>
+            )
+          }
+          
+          return (
+            <div
+              key={day.toISOString()}
+              className={`h-16 border-r border-b ${borderColor} last:border-r-0 cursor-pointer hover:bg-gray-50 ${bgColor} flex flex-col items-center justify-center p-1`}
+              onClick={() => onDateClick(day)}
+            >
+              <span className={`text-sm font-medium ${textColor}`}>
+                {day.getDate()}
+              </span>
+              {statusIndicator && (
+                <div className="mt-1">
+                  {statusIndicator}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 const bloodPressureSchema = z.object({
   systolic: z.number().min(50).max(300),
   diastolic: z.number().min(30).max(200),
@@ -95,6 +234,9 @@ export default function DashboardPage() {
   const [editingRecord, setEditingRecord] = useState<{type: 'bp' | 'bs', id: string} | null>(null)
   const [showGuidelines, setShowGuidelines] = useState(false)
   const [isLineBrowser, setIsLineBrowser] = useState(false)
+  const [currentMonth, setCurrentMonth] = useState(new Date())
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
+  const [calendarFilter, setCalendarFilter] = useState<'all' | 'bp' | 'bs'>('all')
   const router = useRouter()
 
   // ฟังก์ชันแปลงวันที่ พ.ศ. เป็น ISO string
@@ -332,6 +474,11 @@ export default function DashboardPage() {
     }
   }, [])
 
+  // โหลดข้อมูลเมื่อเปลี่ยนเดือน
+  useEffect(() => {
+    loadCalendarData(currentMonth)
+  }, [currentMonth])
+
   const checkAuth = async () => {
     try {
       console.log('Checking authentication...')
@@ -455,6 +602,52 @@ export default function DashboardPage() {
       }
     } catch (error) {
       console.error('Error loading data:', error)
+    }
+  }
+
+  // ฟังก์ชันโหลดข้อมูลตามเดือนสำหรับ calendar
+  const loadCalendarData = async (month: Date) => {
+    try {
+      const startDate = new Date(month.getFullYear(), month.getMonth(), 1)
+      const endDate = new Date(month.getFullYear(), month.getMonth() + 1, 0)
+      
+      const startDateStr = startDate.toISOString().split('T')[0]
+      const endDateStr = endDate.toISOString().split('T')[0]
+
+      // โหลดข้อมูลความดันโลหิตสำหรับเดือนนี้
+      const bpResponse = await fetch(`/api/blood-pressure?startDate=${startDateStr}&endDate=${endDateStr}&calendarView=true`)
+      if (bpResponse.ok) {
+        const bpData = await bpResponse.json()
+        // อัปเดตเฉพาะข้อมูลของเดือนนี้
+        setBloodPressureRecords(prev => {
+          const filtered = prev.filter(r => {
+            const recordDate = new Date(r.recordedAt)
+            return !(recordDate >= startDate && recordDate <= endDate)
+          })
+          return [...filtered, ...bpData.records].sort((a, b) => 
+            new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime()
+          )
+        })
+      }
+
+      // โหลดข้อมูลน้ำตาลในเลือดสำหรับเดือนนี้
+      const bsResponse = await fetch(`/api/blood-sugar?startDate=${startDateStr}&endDate=${endDateStr}&calendarView=true`)
+      if (bsResponse.ok) {
+        const bsData = await bsResponse.json()
+        // อัปเดตเฉพาะข้อมูลของเดือนนี้
+        setBloodSugarRecords(prev => {
+          const filtered = prev.filter(r => {
+            const recordDate = new Date(r.recordedAt)
+            return !(recordDate >= startDate && recordDate <= endDate)
+          })
+          return [...filtered, ...bsData.records].sort((a, b) => 
+            new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime()
+          )
+        })
+      }
+
+    } catch (error) {
+      console.error('Error loading calendar data:', error)
     }
   }
 
@@ -2062,6 +2255,115 @@ export default function DashboardPage() {
                   )}
                 </div>
               </div>
+            </div>
+
+            {/* Calendar View */}
+            <div className="card">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold">ปฏิทินข้อมูลสุขภาพ</h3>
+                <div className="flex gap-2">
+                  <select
+                    value={calendarFilter}
+                    onChange={(e) => setCalendarFilter(e.target.value as 'all' | 'bp' | 'bs')}
+                    className="px-3 py-1 border border-gray-300 rounded-md text-sm"
+                  >
+                    <option value="all">ทั้งหมด</option>
+                    <option value="bp">ความดันโลหิต</option>
+                    <option value="bs">น้ำตาลในเลือด</option>
+                  </select>
+                  <button
+                    onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}
+                    className="p-1 hover:bg-gray-100 rounded"
+                  >
+                    ←
+                  </button>
+                  <span className="px-3 py-1 text-sm font-medium">
+                    {currentMonth.toLocaleDateString('th-TH', { year: 'numeric', month: 'long' })}
+                  </span>
+                  <button
+                    onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}
+                    className="p-1 hover:bg-gray-100 rounded"
+                  >
+                    →
+                  </button>
+                </div>
+              </div>
+              
+              <CalendarView
+                currentMonth={currentMonth}
+                bloodPressureRecords={bloodPressureRecords}
+                bloodSugarRecords={bloodSugarRecords}
+                filter={calendarFilter}
+                onDateClick={setSelectedDate}
+                selectedDate={selectedDate}
+              />
+              
+              {selectedDate && (
+                <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                  <h4 className="font-semibold mb-2">
+                    ข้อมูลวันที่ {selectedDate.toLocaleDateString('th-TH')}
+                  </h4>
+                  <div className="space-y-2">
+                    {(() => {
+                      const dateStr = selectedDate.toISOString().split('T')[0]
+                      const bpRecords = bloodPressureRecords.filter(r => 
+                        r.recordedAt.startsWith(dateStr)
+                      )
+                      const bsRecords = bloodSugarRecords.filter(r => 
+                        r.recordedAt.startsWith(dateStr)
+                      )
+                      
+                      return (
+                        <>
+                          {bpRecords.map(record => {
+                            const bpLevel = getBloodPressureLevel(record.systolic, record.diastolic)
+                            return (
+                              <div key={record.id} className="flex items-center justify-between p-2 bg-white rounded border">
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-3 h-3 rounded-full bg-${bpLevel.color}-500`}></div>
+                                  <span className="text-sm">
+                                    ความดันโลหิต: {record.systolic}/{record.diastolic} mmHg
+                                    {record.pulse && ` (Pulse: ${record.pulse})`}
+                                  </span>
+                                </div>
+                                <span className="text-xs text-gray-500">
+                                  {record.timeOfDay === 'morning' ? 'เช้า' :
+                                   record.timeOfDay === 'afternoon' ? 'บ่าย' :
+                                   record.timeOfDay === 'evening' ? 'เย็น' : 'ก่อนนอน'}
+                                </span>
+                              </div>
+                            )
+                          })}
+                          {bsRecords.map(record => {
+                            const bsLevel = record.timeOfDay === 'after_meal_2h' 
+                              ? getBloodSugarLevelPostMeal(record.value)
+                              : getBloodSugarLevel(record.value)
+                            return (
+                              <div key={record.id} className="flex items-center justify-between p-2 bg-white rounded border">
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-3 h-3 rounded-full bg-${bsLevel.color}-500`}></div>
+                                  <span className="text-sm">
+                                    น้ำตาลในเลือด: {record.value} {record.unit}
+                                  </span>
+                                </div>
+                                <span className="text-xs text-gray-500">
+                                  {record.timeOfDay === 'before_breakfast' ? 'ก่อนอาหารเช้า' :
+                                   record.timeOfDay === 'before_lunch' ? 'ก่อนอาหารกลางวัน' :
+                                   record.timeOfDay === 'before_dinner' ? 'ก่อนอาหารเย็น' :
+                                   record.timeOfDay === 'after_meal_2h' ? 'หลังอาหาร 2 ชม.' : 'ก่อนนอน'}
+                                </span>
+                              </div>
+                            )
+                          })}
+                          {bpRecords.length === 0 && bsRecords.length === 0 && (
+                            <p className="text-gray-500 text-center py-4">ไม่มีข้อมูลในวันที่นี้</p>
+                          )}
+                        </>
+                      )
+                    })()}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Latest Data */}

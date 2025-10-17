@@ -78,23 +78,36 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const limit = parseInt(searchParams.get('limit') || '30')
     const offset = parseInt(searchParams.get('offset') || '0')
+    const startDate = searchParams.get('startDate')
+    const endDate = searchParams.get('endDate')
+    const calendarView = searchParams.get('calendarView') === 'true'
 
+    // สร้าง where condition
+    let whereCondition: any = { userId: user.id }
+    
+    if (startDate && endDate) {
+      whereCondition.recordedAt = {
+        gte: new Date(startDate),
+        lte: new Date(endDate)
+      }
+    }
+
+    // สำหรับ calendar view ให้ดึงข้อมูลทั้งหมดในช่วงวันที่
     const records = await prisma.bloodPressureRecord.findMany({
-      where: { userId: user.id },
+      where: whereCondition,
       orderBy: { recordedAt: 'desc' },
-      take: limit,
-      skip: offset
+      ...(calendarView ? {} : { take: limit, skip: offset })
     })
 
     const total = await prisma.bloodPressureRecord.count({
-      where: { userId: user.id }
+      where: whereCondition
     })
 
     return NextResponse.json({
       success: true,
       records,
       total,
-      hasMore: offset + limit < total
+      hasMore: calendarView ? false : offset + limit < total
     })
 
   } catch (error) {
